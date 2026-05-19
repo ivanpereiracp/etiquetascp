@@ -19,14 +19,18 @@ export const GRFConverter = () => {
   };
 
   const processImage = (data: ImageData, thresh: number) => {
-    // Convert to black and white
-    const bwData = convertToBlackAndWhite(data, thresh);
+    // 1) Clamp/center to the label boundary (max 812 x 1656 px @ 203 DPI).
+    //    This guarantees the GRF width matches the image width — no horizontal tiling.
+    const clamped = clampToLabelSize(data, LABEL_MAX_WIDTH_PX, LABEL_MAX_HEIGHT_PX);
+
+    // 2) Convert to pure B&W (no grayscale).
+    const bwData = convertToBlackAndWhite(clamped, thresh);
     setProcessedData(bwData);
-    
-    // Generate GRF
+
+    // 3) Generate GRF from the exact same buffer.
     const grf = convertToGRF(bwData, imageName.toUpperCase().replace(/\s/g, '_'));
     setGrfContent(grf);
-    
+
     // Update preview canvas
     if (previewCanvasRef.current) {
       const ctx = previewCanvasRef.current.getContext('2d');
