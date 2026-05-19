@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Download, FileCode, Settings } from 'lucide-react';
 import { ImageUploader } from './ImageUploader';
-import { convertToGRF, convertToBlackAndWhite, downloadFile, downloadCanvasAsImage } from '@/utils/imageProcessing';
+import { convertToGRF, convertToBlackAndWhite, downloadFile, downloadCanvasAsImage, clampToLabelSize, LABEL_MAX_WIDTH_PX, LABEL_MAX_HEIGHT_PX } from '@/utils/imageProcessing';
 import { Slider } from '@/components/ui/slider';
 
 export const GRFConverter = () => {
