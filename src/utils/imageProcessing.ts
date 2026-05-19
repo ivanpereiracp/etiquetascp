@@ -24,6 +24,58 @@ export const convertToBlackAndWhite = (
   return new ImageData(data, imageData.width, imageData.height);
 };
 
+// Default Zebra label limits at 203 DPI (8 dots/mm) for a 100mm x 204mm label.
+export const LABEL_MAX_WIDTH_PX = 812;
+export const LABEL_MAX_HEIGHT_PX = 1656;
+
+/**
+ * Ensures the source image fits within the label boundary.
+ * - If the image is smaller, it is centered on a white canvas of its own size
+ *   (no upscaling, no tiling/pattern).
+ * - If the image exceeds the maximum dimensions, it is proportionally scaled
+ *   down to fit within LABEL_MAX_WIDTH_PX x LABEL_MAX_HEIGHT_PX and centered.
+ * The returned ImageData has exactly the dimensions used for the GRF, so the
+ * conversion loop will never duplicate the image horizontally.
+ */
+export const clampToLabelSize = (
+  imageData: ImageData,
+  maxWidth: number = LABEL_MAX_WIDTH_PX,
+  maxHeight: number = LABEL_MAX_HEIGHT_PX
+): ImageData => {
+  const srcW = imageData.width;
+  const srcH = imageData.height;
+
+  // Compute scale (only down-scale, never up-scale).
+  const scale = Math.min(1, maxWidth / srcW, maxHeight / srcH);
+  const drawW = Math.max(1, Math.floor(srcW * scale));
+  const drawH = Math.max(1, Math.floor(srcH * scale));
+
+  // Final canvas size = drawn size (no padding/tiling). This guarantees
+  // bytesPerRow = ceil(width/8) matches the actual pixel width.
+  const canvas = document.createElement('canvas');
+  canvas.width = drawW;
+  canvas.height = drawH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return imageData;
+
+  // White background (any padding bits will be 0 = white in GRF).
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, drawW, drawH);
+
+  // Render the source ImageData via a temporary canvas to allow scaling.
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = srcW;
+  srcCanvas.height = srcH;
+  const srcCtx = srcCanvas.getContext('2d');
+  if (!srcCtx) return imageData;
+  srcCtx.putImageData(imageData, 0, 0);
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(srcCanvas, 0, 0, srcW, srcH, 0, 0, drawW, drawH);
+
+  return ctx.getImageData(0, 0, drawW, drawH);
+};
+
 // Convert image to GRF format for Zebra printers
 export const convertToGRF = (
   imageData: ImageData,
@@ -31,41 +83,39 @@ export const convertToGRF = (
 ): string => {
   const width = imageData.width;
   const height = imageData.height;
+  // Bytes per printed row — strictly based on the image width.
   const bytesPerRow = Math.ceil(width / 8);
   const totalBytes = bytesPerRow * height;
-  
-  let hexData = "";
-  
+
+  // Pre-size the buffer; each byte = 2 hex chars.
+  const hexChars = new Array<string>(totalBytes);
+  let writeIdx = 0;
+
+  // Row-by-row scan. Each row terminates exactly at `width` and the
+  // remaining bits of the last byte are left as 0 (white space).
   for (let y = 0; y < height; y++) {
+    const rowStart = y * width * 4;
     for (let byteIndex = 0; byteIndex < bytesPerRow; byteIndex++) {
       let byte = 0;
-      
-      for (let bit = 0; bit < 8; bit++) {
-        const x = byteIndex * 8 + bit;
-        
-        if (x < width) {
-          const pixelIndex = (y * width + x) * 4;
-          const r = imageData.data[pixelIndex];
-          const g = imageData.data[pixelIndex + 1];
-          const b = imageData.data[pixelIndex + 2];
-          
-          // Calculate luminance and check if dark
-          const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-          
-          if (luminance < 128) {
-            byte |= (1 << (7 - bit));
-          }
+      const baseX = byteIndex * 8;
+      const bitsThisByte = Math.min(8, width - baseX); // <8 on the last byte if width % 8 !== 0
+      for (let bit = 0; bit < bitsThisByte; bit++) {
+        const pixelIndex = rowStart + (baseX + bit) * 4;
+        const r = imageData.data[pixelIndex];
+        const g = imageData.data[pixelIndex + 1];
+        const b = imageData.data[pixelIndex + 2];
+        const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+        if (luminance < 128) {
+          byte |= (1 << (7 - bit));
         }
       }
-      
-      hexData += byte.toString(16).padStart(2, '0').toUpperCase();
+      hexChars[writeIdx++] = byte.toString(16).padStart(2, '0').toUpperCase();
     }
   }
-  
-  // Create GRF format
-  const grf = `~DG${name},${totalBytes},${bytesPerRow},${hexData}`;
-  
-  return grf;
+
+  const safeName = name.toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 8) || 'IMAGE';
+  // Standard Zebra download-graphic command, stored on R: memory.
+  return `~DGR:${safeName}.GRF,${totalBytes},${bytesPerRow},${hexChars.join('')}`;
 };
 
 // Raster image with different photometry options
