@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Upload, Image as ImageIcon, X } from 'lucide-react';
+import UTIF from 'utif';
 
 interface ImageUploaderProps {
   onImageLoad: (imageData: ImageData, canvas: HTMLCanvasElement) => void;
@@ -10,36 +11,68 @@ export const ImageUploader = ({ onImageLoad, label = "Arraste uma imagem ou cliq
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const processImage = useCallback((file: File) => {
+  const emitFromCanvas = useCallback((canvas: HTMLCanvasElement) => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    setPreview(canvas.toDataURL('image/png'));
+    onImageLoad(imageData, canvas);
+  }, [onImageLoad]);
+
+  const processTiff = useCallback((file: File) => {
     const reader = new FileReader();
-    
+    reader.onload = (e) => {
+      try {
+        const buffer = e.target?.result as ArrayBuffer;
+        const ifds = UTIF.decode(buffer);
+        UTIF.decodeImage(buffer, ifds[0]);
+        const rgba = UTIF.toRGBA8(ifds[0]);
+        const canvas = document.createElement('canvas');
+        canvas.width = ifds[0].width;
+        canvas.height = ifds[0].height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const imageData = new ImageData(new Uint8ClampedArray(rgba), canvas.width, canvas.height);
+          ctx.putImageData(imageData, 0, 0);
+          emitFromCanvas(canvas);
+        }
+      } catch (err) {
+        console.error('Failed to decode TIFF', err);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }, [emitFromCanvas]);
+
+  const processImage = useCallback((file: File) => {
+    const isTiff = /\.(tif|tiff)$/i.test(file.name) || file.type === 'image/tiff';
+    if (isTiff) {
+      processTiff(file);
+      return;
+    }
+    const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
-        
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          setPreview(e.target?.result as string);
-          onImageLoad(imageData, canvas);
+          emitFromCanvas(canvas);
         }
       };
       img.src = e.target?.result as string;
     };
-    
     reader.readAsDataURL(file);
-  }, [onImageLoad]);
+  }, [emitFromCanvas, processTiff]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     
     const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file) {
       processImage(file);
     }
   }, [processImage]);
@@ -84,7 +117,7 @@ export const ImageUploader = ({ onImageLoad, label = "Arraste uma imagem ou cliq
         >
           <input
             type="file"
-            accept="image/*"
+            accept="image/*,.tif,.tiff,image/tiff"
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -95,7 +128,7 @@ export const ImageUploader = ({ onImageLoad, label = "Arraste uma imagem ou cliq
               <Upload size={48} />
             )}
             <span className="text-sm text-center">{label}</span>
-            <span className="text-xs">PNG, JPG, GIF, BMP</span>
+            <span className="text-xs">PNG, JPG, GIF, BMP, TIF/TIFF</span>
           </div>
         </label>
       )}
