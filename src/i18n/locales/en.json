@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "Zebra Image Tools",
+    "subtitle": "Image processing for Zebra printers",
+    "footer": "Image processing tool for Zebra thermal printers"
+  },
+  "tabs": {
+    "grf": "GRF Converter",
+    "bw": "Black & White",
+    "raster": "Raster",
+    "zpl": "ZPL Labels"
+  },
+  "settings": {
+    "title": "Settings",
+    "open": "Open settings",
+    "branding": "Branding",
+    "siteName": "Site name",
+    "siteSubtitle": "Subtitle",
+    "logo": "Logo",
+    "uploadLogo": "Upload logo",
+    "removeLogo": "Remove logo",
+    "colors": "Colors",
+    "primary": "Primary color",
+    "secondary": "Secondary color",
+    "font": "Font",
+    "editorBg": "Editor background",
+    "language": "Language",
+    "reset": "Reset to defaults",
+    "close": "Close",
+    "saved": "Settings saved"
+  },
+  "common": {
+    "download": "Download",
+    "upload": "Upload"
+  }
+}
