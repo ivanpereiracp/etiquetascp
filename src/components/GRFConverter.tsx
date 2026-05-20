@@ -1,65 +1,133 @@
-import { useState, useRef } from 'react';
-import { Download, FileCode, Settings } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Download, FileCode, Settings, RotateCw, Save } from 'lucide-react';
 import { ImageUploader } from './ImageUploader';
-import { convertToGRF, convertToBlackAndWhite, downloadFile, downloadCanvasAsImage, clampToLabelSize, LABEL_MAX_WIDTH_PX, LABEL_MAX_HEIGHT_PX } from '@/utils/imageProcessing';
+import { ImageGallery } from './ImageGallery';
+import { ImageEditor } from './ImageEditor';
+import { ZoomControl } from './ZoomControl';
+import {
+  convertToGRF,
+  convertToBlackAndWhite,
+  downloadFile,
+  downloadCanvasAsImage,
+  clampToLabelSize,
+  LABEL_MAX_WIDTH_PX,
+  LABEL_MAX_HEIGHT_PX,
+} from '@/utils/imageProcessing';
+import { rotateImageData, Rotation } from '@/utils/rotation';
+import { addGalleryItem, imageDataToDataUrl } from '@/utils/db';
+import { Unit, fromPx, toPx } from '@/utils/units';
 import { Slider } from '@/components/ui/slider';
 
 export const GRFConverter = () => {
-  const [imageData, setImageData] = useState<ImageData | null>(null);
+  // The "source" image is what the user originally loaded (possibly edited).
+  const [sourceData, setSourceData] = useState<ImageData | null>(null);
   const [processedData, setProcessedData] = useState<ImageData | null>(null);
   const [grfContent, setGrfContent] = useState<string>('');
   const [threshold, setThreshold] = useState(128);
   const [imageName, setImageName] = useState('IMAGE');
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [rotation, setRotation] = useState<Rotation>(0);
+  const [zoom, setZoom] = useState(100);
+  const [unit, setUnit] = useState<Unit>('px');
+  const [widthInput, setWidthInput] = useState<number>(0);
+  const [heightInput, setHeightInput] = useState<number>(0);
+  const [galleryKey, setGalleryKey] = useState(0);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  const handleImageLoad = (data: ImageData, canvas: HTMLCanvasElement) => {
-    setImageData(data);
-    processImage(data, threshold);
-  };
+  // Apply pipeline: rotate → resize (if user changed dims) → clamp → B&W → GRF
+  const runPipeline = (src: ImageData, opts?: { width?: number; height?: number }) => {
+    const rotated = rotateImageData(src, rotation);
 
-  const processImage = (data: ImageData, thresh: number) => {
-    // 1) Clamp/center to the label boundary (max 812 x 1656 px @ 203 DPI).
-    //    This guarantees the GRF width matches the image width — no horizontal tiling.
-    const clamped = clampToLabelSize(data, LABEL_MAX_WIDTH_PX, LABEL_MAX_HEIGHT_PX);
+    // Optional user-driven resize (px values)
+    let resized = rotated;
+    const w = opts?.width ?? rotated.width;
+    const h = opts?.height ?? rotated.height;
+    if (w !== rotated.width || h !== rotated.height) {
+      const tmp = document.createElement('canvas');
+      tmp.width = rotated.width;
+      tmp.height = rotated.height;
+      tmp.getContext('2d')!.putImageData(rotated, 0, 0);
+      const out = document.createElement('canvas');
+      out.width = Math.max(1, w);
+      out.height = Math.max(1, h);
+      const octx = out.getContext('2d')!;
+      octx.imageSmoothingEnabled = false;
+      octx.fillStyle = '#fff';
+      octx.fillRect(0, 0, out.width, out.height);
+      octx.drawImage(tmp, 0, 0, out.width, out.height);
+      resized = octx.getImageData(0, 0, out.width, out.height);
+    }
 
-    // 2) Convert to pure B&W (no grayscale).
-    const bwData = convertToBlackAndWhite(clamped, thresh);
-    setProcessedData(bwData);
+    const clamped = clampToLabelSize(resized, LABEL_MAX_WIDTH_PX, LABEL_MAX_HEIGHT_PX);
+    const bw = convertToBlackAndWhite(clamped, threshold);
+    setProcessedData(bw);
+    setGrfContent(convertToGRF(bw, imageName.toUpperCase().replace(/\s/g, '_')));
 
-    // 3) Generate GRF from the exact same buffer.
-    const grf = convertToGRF(bwData, imageName.toUpperCase().replace(/\s/g, '_'));
-    setGrfContent(grf);
-
-    // Update preview canvas
     if (previewCanvasRef.current) {
       const ctx = previewCanvasRef.current.getContext('2d');
       if (ctx) {
-        previewCanvasRef.current.width = bwData.width;
-        previewCanvasRef.current.height = bwData.height;
-        ctx.putImageData(bwData, 0, 0);
+        previewCanvasRef.current.width = bw.width;
+        previewCanvasRef.current.height = bw.height;
+        ctx.putImageData(bw, 0, 0);
       }
     }
   };
 
-  const handleThresholdChange = (value: number[]) => {
-    const newThreshold = value[0];
-    setThreshold(newThreshold);
-    if (imageData) {
-      processImage(imageData, newThreshold);
+  // Re-run when knobs change
+  useEffect(() => {
+    if (sourceData) runPipeline(sourceData, { width: toPx(widthInput, unit), height: toPx(heightInput, unit) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rotation, threshold, imageName]);
+
+  const handleImageLoad = async (data: ImageData) => {
+    setSourceData(data);
+    // Initialize dimension inputs to the actual image size after rotation
+    const rotated = rotateImageData(data, rotation);
+    setWidthInput(fromPx(rotated.width, unit));
+    setHeightInput(fromPx(rotated.height, unit));
+    runPipeline(data);
+
+    // Auto-save to gallery
+    try {
+      await addGalleryItem({
+        id: `${Date.now()}`,
+        name: imageName || 'IMAGE',
+        createdAt: Date.now(),
+        width: data.width,
+        height: data.height,
+        dataUrl: imageDataToDataUrl(data),
+      });
+      setGalleryKey((k) => k + 1);
+    } catch (e) {
+      console.error('gallery save failed', e);
     }
+  };
+
+  const handleEditorApply = (newData: ImageData) => {
+    setSourceData(newData);
+    runPipeline(newData, { width: toPx(widthInput, unit), height: toPx(heightInput, unit) });
+  };
+
+  const handleUnitChange = (u: Unit) => {
+    if (!sourceData) { setUnit(u); return; }
+    const rotated = rotateImageData(sourceData, rotation);
+    // Convert current px size to new unit display
+    const currentPxW = toPx(widthInput, unit) || rotated.width;
+    const currentPxH = toPx(heightInput, unit) || rotated.height;
+    setUnit(u);
+    setWidthInput(fromPx(currentPxW, u));
+    setHeightInput(fromPx(currentPxH, u));
+  };
+
+  const applyDimensions = () => {
+    if (!sourceData) return;
+    runPipeline(sourceData, { width: toPx(widthInput, unit), height: toPx(heightInput, unit) });
   };
 
   const handleDownloadGRF = () => {
-    if (grfContent) {
-      downloadFile(grfContent, `${imageName}.grf`, 'text/plain');
-    }
+    if (grfContent) downloadFile(grfContent, `${imageName}.grf`, 'text/plain');
   };
-
   const handleDownloadPreview = async () => {
-    if (previewCanvasRef.current) {
-      await downloadCanvasAsImage(previewCanvasRef.current, `${imageName}_preview.png`);
-    }
+    if (previewCanvasRef.current) await downloadCanvasAsImage(previewCanvasRef.current, `${imageName}_preview.png`);
   };
 
   return (
@@ -69,94 +137,154 @@ export const GRFConverter = () => {
           <FileCode className="text-primary" size={24} />
           <h2 className="text-xl font-semibold">Conversor GRF para Zebra</h2>
         </div>
-        
         <p className="text-muted-foreground text-sm mb-6">
           Converta imagens para o formato .GRF compatível com impressoras Zebra ZPL.
         </p>
-
-        <ImageUploader onImageLoad={handleImageLoad} />
+        <ImageUploader onImageLoad={(d) => handleImageLoad(d)} />
       </div>
 
-      {imageData && (
-        <div className="glass-panel rounded-xl p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <Settings className="text-primary" size={20} />
-            <h3 className="font-semibold">Configurações</h3>
-          </div>
+      <ImageGallery onPick={(d, name) => { setImageName(name.replace(/\.[^.]+$/, '').toUpperCase() || 'IMAGE'); handleImageLoad(d); }} refreshKey={galleryKey} />
 
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <label className="text-sm text-muted-foreground">Nome da Imagem</label>
-              <input
-                type="text"
-                value={imageName}
-                onChange={(e) => {
-                  setImageName(e.target.value);
-                  if (imageData) processImage(imageData, threshold);
-                }}
-                className="w-full bg-input border border-border rounded-lg px-4 py-2 
-                           focus:outline-none focus:ring-2 focus:ring-primary"
-                placeholder="IMAGE"
-              />
+      {sourceData && (
+        <>
+          <div className="glass-panel rounded-xl p-6 space-y-6">
+            <div className="flex items-center gap-3">
+              <Settings className="text-primary" size={20} />
+              <h3 className="font-semibold">Configurações</h3>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm text-muted-foreground">
-                Limiar de Preto/Branco: {threshold}
-              </label>
-              <Slider
-                value={[threshold]}
-                onValueChange={handleThresholdChange}
-                min={0}
-                max={255}
-                step={1}
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="text-sm text-muted-foreground mb-3">Preview Processado</h4>
-              <div className="bg-white rounded-lg p-4 flex items-center justify-center min-h-[200px]">
-                <canvas 
-                  ref={previewCanvasRef} 
-                  className="max-w-full max-h-48 object-contain"
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-sm text-muted-foreground">Nome da Imagem</label>
+                <input
+                  type="text"
+                  value={imageName}
+                  onChange={(e) => setImageName(e.target.value)}
+                  className="w-full bg-input border border-border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="IMAGE"
                 />
               </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm text-muted-foreground mb-3">Código GRF</h4>
-              <div className="bg-muted rounded-lg p-4 h-[200px] overflow-auto">
-                <pre className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
-                  {grfContent.substring(0, 500)}
-                  {grfContent.length > 500 && '...'}
-                </pre>
+              <div className="space-y-3">
+                <label className="text-sm text-muted-foreground">Limiar de Preto/Branco: {threshold}</label>
+                <Slider value={[threshold]} onValueChange={(v) => setThreshold(v[0])} min={0} max={255} step={1} />
               </div>
             </div>
-          </div>
 
-          <div className="flex flex-wrap gap-4">
-            <button onClick={handleDownloadGRF} className="download-button">
-              <Download size={20} />
-              Download .GRF
-            </button>
-            <button onClick={handleDownloadPreview} className="tool-button flex items-center gap-2">
-              <Download size={20} />
-              Download Preview PNG
-            </button>
-          </div>
-
-          {processedData && (
-            <div className="text-sm text-muted-foreground">
-              Dimensões: {processedData.width} x {processedData.height} pixels
+            <div className="grid md:grid-cols-3 gap-4 items-end">
+              <div>
+                <label className="text-sm text-muted-foreground flex items-center gap-2 mb-2">
+                  <RotateCw size={14} /> Rotação
+                </label>
+                <select
+                  value={rotation}
+                  onChange={(e) => setRotation(Number(e.target.value) as Rotation)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white text-black font-medium"
+                >
+                  <option value={0}>0°</option>
+                  <option value={90}>90°</option>
+                  <option value={180}>180°</option>
+                  <option value={270}>270°</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-muted-foreground mb-2 block">Unidade</label>
+                <select
+                  value={unit}
+                  onChange={(e) => handleUnitChange(e.target.value as Unit)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-white text-black font-medium"
+                >
+                  <option value="px">Pixels</option>
+                  <option value="mm">Milímetros</option>
+                  <option value="cm">Centímetros</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Largura ({unit})</label>
+                  <input
+                    type="number"
+                    value={widthInput}
+                    onChange={(e) => setWidthInput(+e.target.value || 0)}
+                    onBlur={applyDimensions}
+                    className="w-full bg-input border border-border rounded px-2 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Altura ({unit})</label>
+                  <input
+                    type="number"
+                    value={heightInput}
+                    onChange={(e) => setHeightInput(+e.target.value || 0)}
+                    onBlur={applyDimensions}
+                    className="w-full bg-input border border-border rounded px-2 py-2 text-sm"
+                  />
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      )}
 
-      <canvas ref={canvasRef} className="hidden" />
+            <ZoomControl value={zoom} onChange={setZoom} label="Zoom preview" />
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="text-sm text-muted-foreground mb-3">Preview Processado</h4>
+                <div className="bg-white rounded-lg p-4 flex items-center justify-center min-h-[200px] overflow-auto">
+                  <canvas
+                    ref={previewCanvasRef}
+                    style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm text-muted-foreground mb-3">Código GRF</h4>
+                <div className="bg-muted rounded-lg p-4 h-[200px] overflow-auto">
+                  <pre className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
+                    {grfContent.substring(0, 500)}
+                    {grfContent.length > 500 && '...'}
+                  </pre>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <button onClick={handleDownloadGRF} className="download-button">
+                <Download size={20} />
+                Download .GRF
+              </button>
+              <button onClick={handleDownloadPreview} className="tool-button flex items-center gap-2">
+                <Download size={20} />
+                Download Preview PNG
+              </button>
+              <button
+                onClick={async () => {
+                  if (!sourceData) return;
+                  await addGalleryItem({
+                    id: `${Date.now()}`,
+                    name: imageName,
+                    createdAt: Date.now(),
+                    width: sourceData.width,
+                    height: sourceData.height,
+                    dataUrl: imageDataToDataUrl(sourceData),
+                  });
+                  setGalleryKey((k) => k + 1);
+                }}
+                className="tool-button flex items-center gap-2"
+              >
+                <Save size={20} /> Salvar na galeria
+              </button>
+            </div>
+
+            {processedData && (
+              <div className="text-sm text-muted-foreground">
+                Dimensões finais: {processedData.width} x {processedData.height} pixels
+              </div>
+            )}
+          </div>
+
+          <ImageEditor source={sourceData} onApply={handleEditorApply} />
+        </>
+      )}
     </div>
   );
 };
