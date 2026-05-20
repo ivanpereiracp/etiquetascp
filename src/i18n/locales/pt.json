@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "Zebra Image Tools",
+    "subtitle": "Processamento de imagens para impressoras Zebra",
+    "footer": "Ferramenta de processamento de imagens para impressoras térmicas Zebra"
+  },
+  "tabs": {
+    "grf": "Conversor GRF",
+    "bw": "Preto e Branco",
+    "raster": "Raster",
+    "zpl": "Etiquetas ZPL"
+  },
+  "settings": {
+    "title": "Configurações",
+    "open": "Abrir configurações",
+    "branding": "Identidade Visual",
+    "siteName": "Nome do site",
+    "siteSubtitle": "Subtítulo",
+    "logo": "Logo",
+    "uploadLogo": "Enviar logo",
+    "removeLogo": "Remover logo",
+    "colors": "Cores",
+    "primary": "Cor primária",
+    "secondary": "Cor secundária",
+    "font": "Fonte",
+    "editorBg": "Fundo da área de edição",
+    "language": "Idioma",
+    "reset": "Restaurar padrões",
+    "close": "Fechar",
+    "saved": "Configurações salvas"
+  },
+  "common": {
+    "download": "Download",
+    "upload": "Enviar"
+  }
+}
