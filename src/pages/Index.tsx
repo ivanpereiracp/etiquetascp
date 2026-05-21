@@ -74,6 +74,7 @@ const Index = () => {
         {activeTab === 'bw' && <BlackWhiteConverter />}
         {activeTab === 'raster' && <RasterConverter />}
         {activeTab === 'zpl' && <ZPLLabelCreator />}
+        {activeTab === 'barcode' && <BarcodeGenerator />}
       </main>
 
       <footer className="border-t border-border/50 bg-card/30 mt-auto">
