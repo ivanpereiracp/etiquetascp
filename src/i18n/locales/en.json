@@ -8,7 +8,8 @@
     "grf": "GRF Converter",
     "bw": "Black & White",
     "raster": "Raster",
-    "zpl": "ZPL Labels"
+    "zpl": "ZPL Labels",
+    "barcode": "Barcodes"
   },
   "settings": {
     "title": "Settings",
