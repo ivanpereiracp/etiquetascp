@@ -1,10 +1,69 @@
-import { useState, useRef, useCallback } from 'react';
-import { Download, Plus, Trash2, Tag, Type, Barcode, QrCode, Square, Minus, Image as ImageIcon, FileText, FileImage } from 'lucide-react';
-import { generateZPL, ZPLElement, fontOptions, barcodeOptions, dpiOptions } from '@/utils/zplGenerator';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  Download,
+  Trash2,
+  Tag,
+  Type,
+  Barcode,
+  QrCode,
+  Square,
+  Minus,
+  FileText,
+  FileImage,
+} from 'lucide-react';
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
+import {
+  generateZPL,
+  ZPLElement,
+  fontOptions,
+  barcodeOptions,
+  dpiOptions,
+  barcodeTypeToJsbarcode,
+} from '@/utils/zplGenerator';
 import { downloadFile } from '@/utils/imageProcessing';
 import { Slider } from '@/components/ui/slider';
 
+type Drag = { index: number; offsetX: number; offsetY: number } | null;
+
+const renderBarcodeToCanvas = (
+  el: Extract<ZPLElement, { type: 'barcode' }>,
+): HTMLCanvasElement | null => {
+  try {
+    const c = document.createElement('canvas');
+    JsBarcode(c, el.content || ' ', {
+      format: barcodeTypeToJsbarcode(el.barcodeType),
+      height: el.height,
+      displayValue: el.humanReadable ?? true,
+      margin: 0,
+      width: el.moduleWidth ?? 2,
+      fontSize: 14,
+    });
+    return c;
+  } catch {
+    return null;
+  }
+};
+
+const renderQRToCanvas = async (
+  el: Extract<ZPLElement, { type: 'qrcode' }>,
+): Promise<HTMLCanvasElement | null> => {
+  try {
+    const c = document.createElement('canvas');
+    await QRCode.toCanvas(c, el.content || ' ', {
+      width: el.size * 20,
+      margin: 0,
+      errorCorrectionLevel: el.errorCorrection ?? 'M',
+    });
+    return c;
+  } catch {
+    return null;
+  }
+};
+
 export const ZPLLabelCreator = () => {
+  const { t } = useTranslation();
   const [labelWidth, setLabelWidth] = useState(400);
   const [labelHeight, setLabelHeight] = useState(300);
   const [dpi, setDpi] = useState(203);
@@ -12,19 +71,35 @@ export const ZPLLabelCreator = () => {
   const [selectedElement, setSelectedElement] = useState<number | null>(null);
   const [zplCode, setZplCode] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dragRef = useRef<Drag>(null);
 
   const addElement = (type: ZPLElement['type']) => {
     let newElement: ZPLElement;
-    
     switch (type) {
       case 'text':
         newElement = { type: 'text', x: 50, y: 50, font: '0', fontSize: 30, content: 'Texto' };
         break;
       case 'barcode':
-        newElement = { type: 'barcode', x: 50, y: 100, barcodeType: 'C', height: 80, content: '1234567890' };
+        newElement = {
+          type: 'barcode',
+          x: 50,
+          y: 100,
+          barcodeType: 'C',
+          height: 80,
+          content: '1234567890',
+          humanReadable: true,
+          moduleWidth: 2,
+        };
         break;
       case 'qrcode':
-        newElement = { type: 'qrcode', x: 50, y: 100, size: 5, content: 'https://example.com' };
+        newElement = {
+          type: 'qrcode',
+          x: 50,
+          y: 100,
+          size: 5,
+          content: 'https://example.com',
+          errorCorrection: 'M',
+        };
         break;
       case 'line':
         newElement = { type: 'line', x: 50, y: 50, width: 200, height: 2 };
@@ -35,43 +110,38 @@ export const ZPLLabelCreator = () => {
       default:
         return;
     }
-    
-    setElements([...elements, newElement]);
-    setSelectedElement(elements.length);
+    setElements((prev) => {
+      const next = [...prev, newElement];
+      setSelectedElement(next.length - 1);
+      return next;
+    });
   };
 
   const updateElement = (index: number, updates: Partial<ZPLElement>) => {
-    const newElements = [...elements];
-    newElements[index] = { ...newElements[index], ...updates } as ZPLElement;
-    setElements(newElements);
+    setElements((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...updates } as ZPLElement;
+      return next;
+    });
   };
 
   const removeElement = (index: number) => {
-    setElements(elements.filter((_, i) => i !== index));
+    setElements((prev) => prev.filter((_, i) => i !== index));
     setSelectedElement(null);
   };
 
   const generateCode = useCallback(() => {
-    const zpl = generateZPL({
-      width: labelWidth,
-      height: labelHeight,
-      dpi,
-      elements
-    });
+    const zpl = generateZPL({ width: labelWidth, height: labelHeight, dpi, elements });
     setZplCode(zpl);
   }, [labelWidth, labelHeight, dpi, elements]);
 
   const downloadZPL = () => {
-    generateCode();
-    if (zplCode) {
-      downloadFile(zplCode, 'etiqueta.zpl', 'text/plain');
-    } else {
-      const code = generateZPL({ width: labelWidth, height: labelHeight, dpi, elements });
-      downloadFile(code, 'etiqueta.zpl', 'text/plain');
-    }
+    const code = generateZPL({ width: labelWidth, height: labelHeight, dpi, elements });
+    setZplCode(code);
+    downloadFile(code, 'etiqueta.zpl', 'text/plain');
   };
 
-  const downloadPNG = async () => {
+  const downloadPNG = () => {
     if (canvasRef.current) {
       const link = document.createElement('a');
       link.download = 'etiqueta.png';
@@ -80,132 +150,169 @@ export const ZPLLabelCreator = () => {
     }
   };
 
-  const downloadPDF = async () => {
-    // Create a simple PDF with the canvas image
-    if (canvasRef.current) {
-      const imgData = canvasRef.current.toDataURL('image/png');
-      
-      // Create a basic PDF structure
-      const pdfContent = `%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${labelWidth} ${labelHeight}] /Contents 4 0 R /Resources << /XObject << /Im0 5 0 R >> >> >>
-endobj
-4 0 obj
-<< /Length 44 >>
-stream
-q ${labelWidth} 0 0 ${labelHeight} 0 0 cm /Im0 Do Q
-endstream
-endobj
-5 0 obj
-<< /Type /XObject /Subtype /Image /Width ${labelWidth} /Height ${labelHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length 0 >>
-stream
-endstream
-endobj
-xref
-0 6
-trailer
-<< /Size 6 /Root 1 0 R >>
-startxref
-0
-%%EOF`;
-      
-      // For a proper PDF, we'd use a library like jsPDF
-      // This is a simplified approach - download the image instead
-      const link = document.createElement('a');
-      link.download = 'etiqueta.pdf';
-      
-      // Convert canvas to PDF-compatible format
-      const canvas = canvasRef.current;
-      canvas.toBlob((blob) => {
-        if (blob) {
-          // Create a simple HTML to PDF approach
-          const printWindow = window.open('', '_blank');
-          if (printWindow) {
-            printWindow.document.write(`
-              <html>
-                <head><title>Etiqueta ZPL</title></head>
-                <body style="margin:0;padding:20px;">
-                  <img src="${imgData}" style="max-width:100%;" />
-                  <script>window.onload = function() { window.print(); }</script>
-                </body>
-              </html>
-            `);
-            printWindow.document.close();
-          }
-        }
-      }, 'image/png');
+  const downloadPDF = () => {
+    if (!canvasRef.current) return;
+    const imgData = canvasRef.current.toDataURL('image/png');
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(
+        `<html><head><title>Etiqueta ZPL</title></head><body style="margin:0;padding:20px;"><img src="${imgData}" style="max-width:100%;" /><script>window.onload=function(){window.print();}</script></body></html>`,
+      );
+      printWindow.document.close();
     }
   };
 
-  // Draw preview
-  const drawPreview = useCallback(() => {
+  // Bounding boxes for hit-testing (computed each draw)
+  const bboxesRef = useRef<{ x: number; y: number; w: number; h: number }[]>([]);
+
+  const drawPreview = useCallback(async () => {
     if (!canvasRef.current) return;
-    
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
-    
-    // Clear and set background
+
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, labelWidth, labelHeight);
-    
-    // Draw elements
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
-    
+
+    const bboxes: { x: number; y: number; w: number; h: number }[] = [];
+
     for (const element of elements) {
+      let bbox = { x: element.x, y: element.y, w: 20, h: 20 };
       switch (element.type) {
-        case 'text':
+        case 'text': {
           ctx.font = `${element.fontSize}px Arial`;
+          const metrics = ctx.measureText(element.content);
           ctx.fillText(element.content, element.x, element.y + element.fontSize);
+          bbox = { x: element.x, y: element.y, w: metrics.width, h: element.fontSize + 4 };
           break;
-          
-        case 'barcode':
-          // Draw simple barcode representation
-          ctx.fillRect(element.x, element.y, 2, element.height);
-          for (let i = 0; i < element.content.length * 3; i++) {
-            if (i % 2 === 0) {
-              ctx.fillRect(element.x + i * 3, element.y, 2, element.height);
-            }
+        }
+        case 'barcode': {
+          const bc = renderBarcodeToCanvas(element);
+          if (bc) {
+            ctx.drawImage(bc, element.x, element.y);
+            bbox = { x: element.x, y: element.y, w: bc.width, h: bc.height };
+          } else {
+            ctx.strokeRect(element.x, element.y, 120, element.height);
+            bbox = { x: element.x, y: element.y, w: 120, h: element.height };
           }
-          ctx.font = '12px Arial';
-          ctx.fillText(element.content, element.x, element.y + element.height + 15);
           break;
-          
-        case 'qrcode':
-          // Draw QR code placeholder
-          const qrSize = element.size * 20;
-          ctx.strokeRect(element.x, element.y, qrSize, qrSize);
-          ctx.font = '10px Arial';
-          ctx.fillText('QR', element.x + qrSize/2 - 8, element.y + qrSize/2 + 4);
+        }
+        case 'qrcode': {
+          const qr = await renderQRToCanvas(element);
+          if (qr) {
+            ctx.drawImage(qr, element.x, element.y);
+            bbox = { x: element.x, y: element.y, w: qr.width, h: qr.height };
+          } else {
+            const s = element.size * 20;
+            ctx.strokeRect(element.x, element.y, s, s);
+            bbox = { x: element.x, y: element.y, w: s, h: s };
+          }
           break;
-          
+        }
         case 'line':
           ctx.fillRect(element.x, element.y, element.width, element.height);
+          bbox = { x: element.x, y: element.y, w: element.width, h: element.height };
           break;
-          
         case 'box':
           ctx.lineWidth = element.borderWidth;
           ctx.strokeRect(element.x, element.y, element.width, element.height);
+          bbox = { x: element.x, y: element.y, w: element.width, h: element.height };
           break;
       }
+      bboxes.push(bbox);
     }
-  }, [elements, labelWidth, labelHeight]);
 
-  // Redraw when elements change
-  useState(() => {
-    drawPreview();
-  });
+    bboxesRef.current = bboxes;
 
-  // Update preview when elements change
-  if (canvasRef.current) {
+    // Selection outline
+    if (selectedElement !== null && bboxes[selectedElement]) {
+      const b = bboxes[selectedElement];
+      ctx.save();
+      ctx.strokeStyle = 'hsl(200 100% 45%)';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
+      ctx.restore();
+    }
+  }, [elements, labelWidth, labelHeight, selectedElement]);
+
+  useEffect(() => {
     drawPreview();
-  }
+  }, [drawPreview]);
+
+  // Keyboard movement
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (selectedElement === null) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      const step = e.shiftKey ? 10 : 1;
+      const el = elements[selectedElement];
+      if (!el) return;
+      let dx = 0;
+      let dy = 0;
+      if (e.key === 'ArrowLeft') dx = -step;
+      else if (e.key === 'ArrowRight') dx = step;
+      else if (e.key === 'ArrowUp') dy = -step;
+      else if (e.key === 'ArrowDown') dy = step;
+      else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        removeElement(selectedElement);
+        return;
+      } else return;
+      e.preventDefault();
+      updateElement(selectedElement, { x: el.x + dx, y: el.y + dy });
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedElement, elements]);
+
+  // Canvas mouse — drag to move
+  const getCanvasPos = (e: React.MouseEvent) => {
+    const c = canvasRef.current!;
+    const rect = c.getBoundingClientRect();
+    const sx = c.width / rect.width;
+    const sy = c.height / rect.height;
+    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+  };
+
+  const onCanvasMouseDown = (e: React.MouseEvent) => {
+    const { x, y } = getCanvasPos(e);
+    const bboxes = bboxesRef.current;
+    let hit = -1;
+    for (let i = bboxes.length - 1; i >= 0; i--) {
+      const b = bboxes[i];
+      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+        hit = i;
+        break;
+      }
+    }
+    if (hit >= 0) {
+      setSelectedElement(hit);
+      dragRef.current = {
+        index: hit,
+        offsetX: x - elements[hit].x,
+        offsetY: y - elements[hit].y,
+      };
+    } else {
+      setSelectedElement(null);
+    }
+  };
+
+  const onCanvasMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current) return;
+    const { x, y } = getCanvasPos(e);
+    const d = dragRef.current;
+    updateElement(d.index, {
+      x: Math.max(0, Math.round(x - d.offsetX)),
+      y: Math.max(0, Math.round(y - d.offsetY)),
+    });
+  };
+
+  const onCanvasMouseUp = () => {
+    dragRef.current = null;
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -214,9 +321,10 @@ startxref
           <Tag className="text-primary" size={24} />
           <h2 className="text-xl font-semibold">Criador de Etiquetas ZPL</h2>
         </div>
-        
+
         <p className="text-muted-foreground text-sm mb-6">
-          Crie etiquetas com código ZPL para impressoras Zebra. Adicione textos, códigos de barras, QR codes e mais.
+          Arraste elementos no preview, use as setas do teclado (Shift = 10px) para ajuste fino.
+          Delete remove o elemento selecionado.
         </p>
 
         {/* Label Settings */}
@@ -237,7 +345,7 @@ startxref
               value={[labelHeight]}
               onValueChange={(v) => setLabelHeight(v[0])}
               min={100}
-              max={600}
+              max={1700}
               step={10}
             />
           </div>
@@ -246,11 +354,9 @@ startxref
             <select
               value={dpi}
               onChange={(e) => setDpi(Number(e.target.value))}
-              className="w-full px-4 py-2 rounded-lg border border-border 
-                         bg-white text-black font-medium
-                         focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full px-4 py-2 rounded-lg border border-border bg-white text-black font-medium focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              {dpiOptions.map(opt => (
+              {dpiOptions.map((opt) => (
                 <option key={opt.value} value={opt.value} className="bg-white text-black">
                   {opt.label}
                 </option>
@@ -288,23 +394,24 @@ startxref
               ref={canvasRef}
               width={labelWidth}
               height={labelHeight}
-              className="border border-gray-300 shadow-lg"
+              onMouseDown={onCanvasMouseDown}
+              onMouseMove={onCanvasMouseMove}
+              onMouseUp={onCanvasMouseUp}
+              onMouseLeave={onCanvasMouseUp}
+              className="border border-gray-300 shadow-lg cursor-move select-none"
               style={{ maxWidth: '100%', height: 'auto' }}
             />
           </div>
-          
+
           <div className="flex flex-wrap gap-3 mt-4">
             <button onClick={downloadZPL} className="download-button">
-              <FileText size={18} />
-              Salvar ZPL
+              <FileText size={18} /> Salvar ZPL
             </button>
             <button onClick={downloadPNG} className="tool-button flex items-center gap-2">
-              <FileImage size={18} />
-              Salvar PNG
+              <FileImage size={18} /> Salvar PNG
             </button>
             <button onClick={downloadPDF} className="tool-button flex items-center gap-2">
-              <Download size={18} />
-              Salvar PDF
+              <Download size={18} /> Salvar PDF
             </button>
           </div>
         </div>
@@ -312,15 +419,16 @@ startxref
         {/* Elements List & Editor */}
         <div className="glass-panel rounded-xl p-6">
           <h3 className="font-semibold mb-4">Elementos ({elements.length})</h3>
-          
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+
+          <div className="space-y-3 max-h-[28rem] overflow-y-auto">
             {elements.map((element, index) => (
-              <div 
+              <div
                 key={index}
-                className={`p-4 rounded-lg border cursor-pointer transition-all
-                           ${selectedElement === index 
-                             ? 'border-primary bg-primary/10' 
-                             : 'border-border bg-muted/50 hover:border-primary/50'}`}
+                className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                  selectedElement === index
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border bg-muted/50 hover:border-primary/50'
+                }`}
                 onClick={() => setSelectedElement(index)}
               >
                 <div className="flex items-center justify-between mb-3">
@@ -332,8 +440,11 @@ startxref
                     {element.type === 'line' && <Minus size={16} />}
                     {element.type}
                   </span>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); removeElement(index); }}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeElement(index);
+                    }}
                     className="p-1 text-destructive hover:bg-destructive/20 rounded"
                   >
                     <Trash2 size={16} />
@@ -382,7 +493,7 @@ startxref
                               onChange={(e) => updateElement(index, { font: e.target.value })}
                               className="w-full px-2 py-1 rounded select-dark border border-border"
                             >
-                              {fontOptions.map(f => (
+                              {fontOptions.map((f) => (
                                 <option key={f.value} value={f.value} className="select-dark">
                                   {f.label}
                                 </option>
@@ -394,7 +505,9 @@ startxref
                             <input
                               type="number"
                               value={element.fontSize}
-                              onChange={(e) => updateElement(index, { fontSize: Number(e.target.value) })}
+                              onChange={(e) =>
+                                updateElement(index, { fontSize: Number(e.target.value) })
+                              }
                               className="w-full px-2 py-1 rounded bg-input border border-border"
                             />
                           </div>
@@ -418,10 +531,12 @@ startxref
                             <label className="text-muted-foreground">Tipo</label>
                             <select
                               value={element.barcodeType}
-                              onChange={(e) => updateElement(index, { barcodeType: e.target.value })}
+                              onChange={(e) =>
+                                updateElement(index, { barcodeType: e.target.value })
+                              }
                               className="w-full px-2 py-1 rounded bg-white text-black border border-border"
                             >
-                              {barcodeOptions.map(b => (
+                              {barcodeOptions.map((b) => (
                                 <option key={b.value} value={b.value} className="bg-white text-black">
                                   {b.label}
                                 </option>
@@ -433,10 +548,37 @@ startxref
                             <input
                               type="number"
                               value={element.height}
-                              onChange={(e) => updateElement(index, { height: Number(e.target.value) })}
+                              onChange={(e) =>
+                                updateElement(index, { height: Number(e.target.value) })
+                              }
                               className="w-full px-2 py-1 rounded bg-input border border-border"
                             />
                           </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 items-end">
+                          <div>
+                            <label className="text-muted-foreground">Espessura módulo</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={10}
+                              value={element.moduleWidth ?? 2}
+                              onChange={(e) =>
+                                updateElement(index, { moduleWidth: Number(e.target.value) })
+                              }
+                              className="w-full px-2 py-1 rounded bg-input border border-border"
+                            />
+                          </div>
+                          <label className="flex items-center gap-2 mt-5">
+                            <input
+                              type="checkbox"
+                              checked={element.humanReadable ?? true}
+                              onChange={(e) =>
+                                updateElement(index, { humanReadable: e.target.checked })
+                              }
+                            />
+                            <span className="text-muted-foreground">Mostrar texto</span>
+                          </label>
                         </div>
                       </>
                     )}
@@ -452,16 +594,37 @@ startxref
                             className="w-full px-2 py-1 rounded bg-input border border-border"
                           />
                         </div>
-                        <div>
-                          <label className="text-muted-foreground">Tamanho (1-10)</label>
-                          <input
-                            type="number"
-                            value={element.size}
-                            min={1}
-                            max={10}
-                            onChange={(e) => updateElement(index, { size: Number(e.target.value) })}
-                            className="w-full px-2 py-1 rounded bg-input border border-border"
-                          />
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-muted-foreground">Tamanho (1-10)</label>
+                            <input
+                              type="number"
+                              value={element.size}
+                              min={1}
+                              max={10}
+                              onChange={(e) =>
+                                updateElement(index, { size: Number(e.target.value) })
+                              }
+                              className="w-full px-2 py-1 rounded bg-input border border-border"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-muted-foreground">Correção de erro</label>
+                            <select
+                              value={element.errorCorrection ?? 'M'}
+                              onChange={(e) =>
+                                updateElement(index, {
+                                  errorCorrection: e.target.value as 'L' | 'M' | 'Q' | 'H',
+                                })
+                              }
+                              className="w-full px-2 py-1 rounded bg-white text-black border border-border"
+                            >
+                              <option value="L">L (7%)</option>
+                              <option value="M">M (15%)</option>
+                              <option value="Q">Q (25%)</option>
+                              <option value="H">H (30%)</option>
+                            </select>
+                          </div>
                         </div>
                       </>
                     )}
@@ -473,7 +636,9 @@ startxref
                           <input
                             type="number"
                             value={element.width}
-                            onChange={(e) => updateElement(index, { width: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateElement(index, { width: Number(e.target.value) })
+                            }
                             className="w-full px-2 py-1 rounded bg-input border border-border"
                           />
                         </div>
@@ -482,7 +647,9 @@ startxref
                           <input
                             type="number"
                             value={element.height}
-                            onChange={(e) => updateElement(index, { height: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateElement(index, { height: Number(e.target.value) })
+                            }
                             className="w-full px-2 py-1 rounded bg-input border border-border"
                           />
                         </div>
@@ -495,7 +662,9 @@ startxref
                         <input
                           type="number"
                           value={element.borderWidth}
-                          onChange={(e) => updateElement(index, { borderWidth: Number(e.target.value) })}
+                          onChange={(e) =>
+                            updateElement(index, { borderWidth: Number(e.target.value) })
+                          }
                           className="w-full px-2 py-1 rounded bg-input border border-border"
                         />
                       </div>
