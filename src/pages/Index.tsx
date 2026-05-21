@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Printer, FileCode, Contrast, Grid3X3, Tag } from 'lucide-react';
+import { Printer, FileCode, Contrast, Grid3X3, Tag, Barcode } from 'lucide-react';
 import { GRFConverter } from '@/components/GRFConverter';
 import { BlackWhiteConverter } from '@/components/BlackWhiteConverter';
 import { RasterConverter } from '@/components/RasterConverter';
 import { ZPLLabelCreator } from '@/components/ZPLLabelCreator';
+import { BarcodeGenerator } from '@/components/BarcodeGenerator';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { useSettings } from '@/contexts/SettingsContext';
 
-type TabType = 'grf' | 'bw' | 'raster' | 'zpl';
+type TabType = 'grf' | 'bw' | 'raster' | 'zpl' | 'barcode';
 
 const Index = () => {
   const { t } = useTranslation();
@@ -20,6 +21,7 @@ const Index = () => {
     { id: 'bw' as TabType, label: t('tabs.bw'), icon: Contrast },
     { id: 'raster' as TabType, label: t('tabs.raster'), icon: Grid3X3 },
     { id: 'zpl' as TabType, label: t('tabs.zpl'), icon: Tag },
+    { id: 'barcode' as TabType, label: t('tabs.barcode'), icon: Barcode },
   ];
 
   return (
@@ -72,6 +74,7 @@ const Index = () => {
         {activeTab === 'bw' && <BlackWhiteConverter />}
         {activeTab === 'raster' && <RasterConverter />}
         {activeTab === 'zpl' && <ZPLLabelCreator />}
+        {activeTab === 'barcode' && <BarcodeGenerator />}
       </main>
 
       <footer className="border-t border-border/50 bg-card/30 mt-auto">

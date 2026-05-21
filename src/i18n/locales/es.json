@@ -8,7 +8,8 @@
     "grf": "Conversor GRF",
     "bw": "Blanco y Negro",
     "raster": "Ráster",
-    "zpl": "Etiquetas ZPL"
+    "zpl": "Etiquetas ZPL",
+    "barcode": "Códigos de Barras"
   },
   "settings": {
     "title": "Configuración",
