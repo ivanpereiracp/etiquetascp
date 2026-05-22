@@ -6,19 +6,34 @@ export interface GalleryItem {
   createdAt: number;
   width: number;
   height: number;
-  dataUrl: string; // PNG data URL for preview + reload
+  dataUrl: string;
+}
+
+export interface HistoryItem {
+  id: string;
+  createdAt: number;
+  name: string;
+  zpl: string;
+  thumbDataUrl?: string;
+  width: number;
+  height: number;
+  dpi: number;
 }
 
 const DB_NAME = 'zit_db';
 const STORE = 'gallery';
+const HISTORY = 'history';
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 const getDB = () => {
   if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, 1, {
-      upgrade(db) {
+    dbPromise = openDB(DB_NAME, 2, {
+      upgrade(db, oldVersion) {
         if (!db.objectStoreNames.contains(STORE)) {
           db.createObjectStore(STORE, { keyPath: 'id' });
+        }
+        if (oldVersion < 2 && !db.objectStoreNames.contains(HISTORY)) {
+          db.createObjectStore(HISTORY, { keyPath: 'id' });
         }
       },
     });
@@ -40,6 +55,27 @@ export const listGalleryItems = async (): Promise<GalleryItem[]> => {
 export const deleteGalleryItem = async (id: string) => {
   const db = await getDB();
   await db.delete(STORE, id);
+};
+
+export const addHistoryItem = async (item: HistoryItem) => {
+  const db = await getDB();
+  await db.put(HISTORY, item);
+};
+
+export const listHistoryItems = async (): Promise<HistoryItem[]> => {
+  const db = await getDB();
+  const items = await db.getAll(HISTORY);
+  return (items as HistoryItem[]).sort((a, b) => b.createdAt - a.createdAt);
+};
+
+export const deleteHistoryItem = async (id: string) => {
+  const db = await getDB();
+  await db.delete(HISTORY, id);
+};
+
+export const clearHistory = async () => {
+  const db = await getDB();
+  await db.clear(HISTORY);
 };
 
 export const dataUrlToImageData = (dataUrl: string): Promise<ImageData> =>
