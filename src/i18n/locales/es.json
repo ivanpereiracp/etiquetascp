@@ -9,7 +9,37 @@
     "bw": "Blanco y Negro",
     "raster": "Ráster",
     "zpl": "Etiquetas ZPL",
-    "barcode": "Códigos de Barras"
+    "barcode": "Códigos de Barras",
+    "viewer": "Visor ZPL",
+    "history": "Historial"
+  },
+  "viewer": {
+    "code": "Código ZPL",
+    "preview": "Vista previa",
+    "render": "Renderizar",
+    "openLabelary": "Abrir en Labelary.com",
+    "import": "Importar .zpl",
+    "export": "Exportar .zpl",
+    "save": "Guardar en historial",
+    "saved": "Guardado en historial",
+    "browserPrint": "Imprimir (navegador)",
+    "usbPrint": "Imprimir por USB (Zebra)",
+    "sentToPrinter": "Enviado a la impresora",
+    "renderFirst": "Renderiza primero",
+    "renderError": "Error al renderizar",
+    "printError": "Error de impresión",
+    "noPreview": "Haz clic en Renderizar para ver la etiqueta",
+    "dpmm": "Resolución",
+    "rotation": "Rotación",
+    "widthIn": "Ancho (pulg)",
+    "heightIn": "Alto (pulg)"
+  },
+  "history": {
+    "title": "Historial de etiquetas",
+    "empty": "Aún no hay etiquetas guardadas",
+    "clearAll": "Limpiar todo",
+    "restore": "Restaurar",
+    "copied": "ZPL copiado"
   },
   "settings": {
     "title": "Configuración",

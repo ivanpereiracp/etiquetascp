@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Printer, FileCode, Contrast, Grid3X3, Tag, Barcode } from 'lucide-react';
+import { Printer, FileCode, Contrast, Grid3X3, Tag, Barcode, Eye, History } from 'lucide-react';
 import { GRFConverter } from '@/components/GRFConverter';
 import { BlackWhiteConverter } from '@/components/BlackWhiteConverter';
 import { RasterConverter } from '@/components/RasterConverter';
 import { ZPLLabelCreator } from '@/components/ZPLLabelCreator';
 import { BarcodeGenerator } from '@/components/BarcodeGenerator';
+import { ZPLViewer } from '@/components/ZPLViewer';
+import { HistoryPanel } from '@/components/HistoryPanel';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { useSettings } from '@/contexts/SettingsContext';
 
-type TabType = 'grf' | 'bw' | 'raster' | 'zpl' | 'barcode';
+type TabType = 'grf' | 'bw' | 'raster' | 'zpl' | 'barcode' | 'viewer' | 'history';
 
 const Index = () => {
   const { t } = useTranslation();
@@ -22,6 +24,8 @@ const Index = () => {
     { id: 'raster' as TabType, label: t('tabs.raster'), icon: Grid3X3 },
     { id: 'zpl' as TabType, label: t('tabs.zpl'), icon: Tag },
     { id: 'barcode' as TabType, label: t('tabs.barcode'), icon: Barcode },
+    { id: 'viewer' as TabType, label: t('tabs.viewer'), icon: Eye },
+    { id: 'history' as TabType, label: t('tabs.history'), icon: History },
   ];
 
   return (
@@ -75,6 +79,8 @@ const Index = () => {
         {activeTab === 'raster' && <RasterConverter />}
         {activeTab === 'zpl' && <ZPLLabelCreator />}
         {activeTab === 'barcode' && <BarcodeGenerator />}
+        {activeTab === 'viewer' && <ZPLViewer />}
+        {activeTab === 'history' && <HistoryPanel />}
       </main>
 
       <footer className="border-t border-border/50 bg-card/30 mt-auto">
