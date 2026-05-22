@@ -9,7 +9,37 @@
     "bw": "Black & White",
     "raster": "Raster",
     "zpl": "ZPL Labels",
-    "barcode": "Barcodes"
+    "barcode": "Barcodes",
+    "viewer": "ZPL Viewer",
+    "history": "History"
+  },
+  "viewer": {
+    "code": "ZPL code",
+    "preview": "Preview",
+    "render": "Render",
+    "openLabelary": "Open in Labelary.com",
+    "import": "Import .zpl",
+    "export": "Export .zpl",
+    "save": "Save to history",
+    "saved": "Saved to history",
+    "browserPrint": "Print (browser)",
+    "usbPrint": "Print via USB (Zebra)",
+    "sentToPrinter": "Sent to printer",
+    "renderFirst": "Render first",
+    "renderError": "Render error",
+    "printError": "Print error",
+    "noPreview": "Click Render to see the label",
+    "dpmm": "Resolution",
+    "rotation": "Rotation",
+    "widthIn": "Width (in)",
+    "heightIn": "Height (in)"
+  },
+  "history": {
+    "title": "Label history",
+    "empty": "No labels saved yet",
+    "clearAll": "Clear all",
+    "restore": "Restore",
+    "copied": "ZPL copied"
   },
   "settings": {
     "title": "Settings",
