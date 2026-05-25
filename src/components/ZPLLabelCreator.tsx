@@ -79,6 +79,27 @@ export const ZPLLabelCreator = () => {
   const [zplCode, setZplCode] = useState('');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<Drag>(null);
+  const resizeRef = useRef<ResizeDrag>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+
+  // Persist editor state
+  useEffect(() => {
+    const raw = localStorage.getItem('zit_zpl_state_v1');
+    if (raw) {
+      try {
+        const s = JSON.parse(raw);
+        if (s.labelWidth) setLabelWidth(s.labelWidth);
+        if (s.labelHeight) setLabelHeight(s.labelHeight);
+        if (s.dpi) setDpi(s.dpi);
+        if (Array.isArray(s.elements)) setElements(s.elements);
+      } catch {}
+    }
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('zit_zpl_state_v1', JSON.stringify({ labelWidth, labelHeight, dpi, elements }));
+  }, [labelWidth, labelHeight, dpi, elements]);
+
 
   const addElement = (type: ZPLElement['type']) => {
     let newElement: ZPLElement;
@@ -114,6 +135,10 @@ export const ZPLLabelCreator = () => {
       case 'box':
         newElement = { type: 'box', x: 50, y: 50, width: 150, height: 100, borderWidth: 2 };
         break;
+      case 'image':
+        // open file picker; element will be added in handler
+        imageInputRef.current?.click();
+        return;
       default:
         return;
     }
