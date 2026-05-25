@@ -32,7 +32,7 @@ type ResizeDrag = { index: number; startW: number; startH: number; startX: numbe
 const HANDLE = 10;
 const dotsToMm = (d: number) => +(d / DOTS_PER_MM).toFixed(1);
 
-type Drag = { index: number; offsetX: number; offsetY: number } | null;
+
 
 const renderBarcodeToCanvas = (
   el: Extract<ZPLElement, { type: 'barcode' }>,
