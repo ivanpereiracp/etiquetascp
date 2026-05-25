@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Printer, FileCode, Contrast, Grid3X3, Tag, Barcode, Eye, History } from 'lucide-react';
 import { GRFConverter } from '@/components/GRFConverter';
@@ -16,7 +16,15 @@ type TabType = 'grf' | 'bw' | 'raster' | 'zpl' | 'barcode' | 'viewer' | 'history
 const Index = () => {
   const { t } = useTranslation();
   const { settings } = useSettings();
-  const [activeTab, setActiveTab] = useState<TabType>('grf');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const saved = localStorage.getItem('zit_active_tab');
+    return (saved as TabType) || 'grf';
+  });
+
+  // Persist active tab
+  useEffect(() => {
+    localStorage.setItem('zit_active_tab', activeTab);
+  }, [activeTab]);
 
   const tabs = [
     { id: 'grf' as TabType, label: t('tabs.grf'), icon: FileCode },
@@ -74,13 +82,14 @@ const Index = () => {
       </nav>
 
       <main className="container mx-auto px-4 py-8">
-        {activeTab === 'grf' && <GRFConverter />}
-        {activeTab === 'bw' && <BlackWhiteConverter />}
-        {activeTab === 'raster' && <RasterConverter />}
-        {activeTab === 'zpl' && <ZPLLabelCreator />}
-        {activeTab === 'barcode' && <BarcodeGenerator />}
-        {activeTab === 'viewer' && <ZPLViewer />}
-        {activeTab === 'history' && <HistoryPanel />}
+        {/* Keep all panels mounted so state persists across tab switches */}
+        <div hidden={activeTab !== 'grf'}><GRFConverter /></div>
+        <div hidden={activeTab !== 'bw'}><BlackWhiteConverter /></div>
+        <div hidden={activeTab !== 'raster'}><RasterConverter /></div>
+        <div hidden={activeTab !== 'zpl'}><ZPLLabelCreator /></div>
+        <div hidden={activeTab !== 'barcode'}><BarcodeGenerator /></div>
+        <div hidden={activeTab !== 'viewer'}><ZPLViewer /></div>
+        <div hidden={activeTab !== 'history'}><HistoryPanel /></div>
       </main>
 
       <footer className="border-t border-border/50 bg-card/30 mt-auto">

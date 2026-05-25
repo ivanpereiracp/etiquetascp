@@ -20,7 +20,16 @@ export type ZPLElement =
   | { type: 'qrcode'; x: number; y: number; size: number; content: string; errorCorrection?: 'L' | 'M' | 'Q' | 'H' }
   | { type: 'line'; x: number; y: number; width: number; height: number }
   | { type: 'box'; x: number; y: number; width: number; height: number; borderWidth: number }
-  | { type: 'image'; x: number; y: number; imageData: string };
+  | {
+      type: 'image';
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      imageDataUrl: string; // PNG dataURL for canvas preview
+      grfData?: string;     // optional precomputed ~DG GRF + ^XG reference
+      grfName?: string;
+    };
 
 const barcodeBlock = (
   barcodeType: string,
@@ -89,7 +98,10 @@ export const generateZPL = (label: ZPLLabel): string => {
 
       case 'image':
         zpl += `^FO${element.x},${element.y}\n`;
-        zpl += element.imageData + '\n';
+        if (element.grfData) {
+          zpl += element.grfData + '\n';
+          if (element.grfName) zpl += `^XG${element.grfName},1,1^FS\n`;
+        }
         break;
     }
   }
