@@ -127,8 +127,12 @@ export const convertToGRF = (
 };
 
 // Raster image with different photometry options
+export type Photometry = 'uncompressed' | 'rgb-palette' | 'rgb';
+export type Compression = 'uncompressed';
+
 export interface RasterOptions {
-  photometry: 'uncompressed' | 'rgb-palette';
+  photometry: Photometry;
+  compression?: Compression;
   width: number;
   height: number;
 }
@@ -138,64 +142,53 @@ export const rasterImage = (
   options: RasterOptions
 ): { imageData: ImageData; rawData: Uint8Array } => {
   const { photometry, width, height } = options;
-  
-  // Create output canvas with potentially larger dimensions (uncompressed)
-  const scale = photometry === 'uncompressed' ? 1 : 1;
-  const newWidth = width * scale;
-  const newHeight = height * scale;
-  
+
+  const newWidth = width;
+  const newHeight = height;
+
   const outputData = new Uint8ClampedArray(newWidth * newHeight * 4);
   const rawData: number[] = [];
-  
-  if (photometry === 'uncompressed') {
-    // Uncompressed - each pixel stored as individual bytes
+
+  if (photometry === 'uncompressed' || photometry === 'rgb') {
+    // Both store full RGB; 'rgb' label is the photometric interpretation tag.
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const srcIndex = (y * width + x) * 4;
         const dstIndex = (y * newWidth + x) * 4;
-        
         outputData[dstIndex] = imageData.data[srcIndex];
         outputData[dstIndex + 1] = imageData.data[srcIndex + 1];
         outputData[dstIndex + 2] = imageData.data[srcIndex + 2];
         outputData[dstIndex + 3] = 255;
-        
         rawData.push(imageData.data[srcIndex]);
         rawData.push(imageData.data[srcIndex + 1]);
         rawData.push(imageData.data[srcIndex + 2]);
       }
     }
   } else {
-    // RGB Palette - create indexed color representation
+    // RGB Palette - indexed
     const palette: Map<string, number> = new Map();
     let paletteIndex = 0;
-    
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const srcIndex = (y * width + x) * 4;
         const r = imageData.data[srcIndex];
         const g = imageData.data[srcIndex + 1];
         const b = imageData.data[srcIndex + 2];
-        
         const colorKey = `${r},${g},${b}`;
-        
-        if (!palette.has(colorKey)) {
-          palette.set(colorKey, paletteIndex++);
-        }
-        
+        if (!palette.has(colorKey)) palette.set(colorKey, paletteIndex++);
         const dstIndex = (y * newWidth + x) * 4;
         outputData[dstIndex] = r;
         outputData[dstIndex + 1] = g;
         outputData[dstIndex + 2] = b;
         outputData[dstIndex + 3] = 255;
-        
         rawData.push(palette.get(colorKey)!);
       }
     }
   }
-  
+
   return {
     imageData: new ImageData(outputData, newWidth, newHeight),
-    rawData: new Uint8Array(rawData)
+    rawData: new Uint8Array(rawData),
   };
 };
 
