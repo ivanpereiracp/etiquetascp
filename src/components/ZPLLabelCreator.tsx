@@ -11,6 +11,7 @@ import {
   Minus,
   FileText,
   FileImage,
+  Image as ImageIcon,
 } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
@@ -22,8 +23,14 @@ import {
   dpiOptions,
   barcodeTypeToJsbarcode,
 } from '@/utils/zplGenerator';
-import { downloadFile } from '@/utils/imageProcessing';
+import { downloadFile, convertToBlackAndWhite, convertToGRF } from '@/utils/imageProcessing';
 import { Slider } from '@/components/ui/slider';
+import { DOTS_PER_MM } from '@/utils/units';
+
+type Drag = { index: number; offsetX: number; offsetY: number } | null;
+type ResizeDrag = { index: number; startW: number; startH: number; startX: number; startY: number } | null;
+const HANDLE = 10;
+const dotsToMm = (d: number) => +(d / DOTS_PER_MM).toFixed(1);
 
 type Drag = { index: number; offsetX: number; offsetY: number } | null;
 
