@@ -29,7 +29,11 @@ export const renderLabelaryPNG = async (params: LabelaryParams): Promise<string>
   const url = `https://api.labelary.com/v1/printers/${dpmm}dpmm/labels/${w}x${h}/${idx}/`;
   const res = await fetch(url, {
     method: 'POST',
-    headers: { Accept: 'image/png', 'X-Rotation': String(rot) },
+    headers: {
+      Accept: 'image/png',
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-Rotation': String(rot),
+    },
     body: params.zpl,
   });
   if (!res.ok) {
