@@ -4,10 +4,11 @@ export interface AppSettings {
   siteName: string;
   siteSubtitle: string;
   logoDataUrl: string | null;
-  primaryHsl: string;   // "190 95% 50%"
-  secondaryHsl: string; // "220 15% 20%"
+  primaryHsl: string;
+  secondaryHsl: string;
+  backgroundHsl: string;
   fontFamily: string;
-  editorBg: string;     // CSS color for label edit area
+  editorBg: string;
 }
 
 const DEFAULTS: AppSettings = {
@@ -16,6 +17,7 @@ const DEFAULTS: AppSettings = {
   logoDataUrl: null,
   primaryHsl: '190 95% 50%',
   secondaryHsl: '220 15% 20%',
+  backgroundHsl: '220 20% 10%',
   fontFamily: 'Inter',
   editorBg: '#ffffff',
 };
@@ -46,6 +48,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     root.style.setProperty('--sidebar-primary', settings.primaryHsl);
     root.style.setProperty('--sidebar-ring', settings.primaryHsl);
     root.style.setProperty('--secondary', settings.secondaryHsl);
+    root.style.setProperty('--background', settings.backgroundHsl);
     document.body.style.fontFamily = `'${settings.fontFamily}', sans-serif`;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   }, [settings]);
