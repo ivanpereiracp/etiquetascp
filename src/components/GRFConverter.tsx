@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Download, FileCode, Settings, RotateCw, Save } from 'lucide-react';
 import { ImageUploader } from './ImageUploader';
 import { ImageGallery } from './ImageGallery';
-import { ImageEditor } from './ImageEditor';
+import { ImageEditor, compositeOverlays, TextOverlay } from './ImageEditor';
 import { ZoomControl } from './ZoomControl';
 import {
   convertToGRF,
@@ -19,7 +19,9 @@ import { Unit, fromPx, toPx } from '@/utils/units';
 import { Slider } from '@/components/ui/slider';
 
 export const GRFConverter = () => {
-  // The "source" image is what the user originally loaded (possibly edited).
+  // Base image = original loaded (immutable for re-edit). Source = base + overlays composited.
+  const [baseImage, setBaseImage] = useState<ImageData | null>(null);
+  const [overlays, setOverlays] = useState<TextOverlay[]>([]);
   const [sourceData, setSourceData] = useState<ImageData | null>(null);
   const [processedData, setProcessedData] = useState<ImageData | null>(null);
   const [grfContent, setGrfContent] = useState<string>('');
@@ -33,11 +35,8 @@ export const GRFConverter = () => {
   const [galleryKey, setGalleryKey] = useState(0);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Apply pipeline: rotate → resize (if user changed dims) → clamp → B&W → GRF
   const runPipeline = (src: ImageData, opts?: { width?: number; height?: number }) => {
     const rotated = rotateImageData(src, rotation);
-
-    // Optional user-driven resize (px values)
     let resized = rotated;
     const w = opts?.width ?? rotated.width;
     const h = opts?.height ?? rotated.height;
@@ -56,7 +55,6 @@ export const GRFConverter = () => {
       octx.drawImage(tmp, 0, 0, out.width, out.height);
       resized = octx.getImageData(0, 0, out.width, out.height);
     }
-
     const clamped = clampToLabelSize(resized, LABEL_MAX_WIDTH_PX, LABEL_MAX_HEIGHT_PX);
     const bw = convertToBlackAndWhite(clamped, threshold);
     setProcessedData(bw);
@@ -72,21 +70,27 @@ export const GRFConverter = () => {
     }
   };
 
-  // Re-run when knobs change
+  // Re-composite overlays whenever they (or the base) change, then re-run pipeline.
+  useEffect(() => {
+    if (!baseImage) return;
+    const composited = overlays.length ? compositeOverlays(baseImage, overlays) : baseImage;
+    setSourceData(composited);
+    runPipeline(composited, { width: toPx(widthInput, unit), height: toPx(heightInput, unit) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseImage, overlays]);
+
   useEffect(() => {
     if (sourceData) runPipeline(sourceData, { width: toPx(widthInput, unit), height: toPx(heightInput, unit) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rotation, threshold, imageName]);
 
   const handleImageLoad = async (data: ImageData) => {
-    setSourceData(data);
-    // Initialize dimension inputs to the actual image size after rotation
+    setBaseImage(data);
+    setOverlays([]);
     const rotated = rotateImageData(data, rotation);
     setWidthInput(fromPx(rotated.width, unit));
     setHeightInput(fromPx(rotated.height, unit));
-    runPipeline(data);
 
-    // Auto-save to gallery
     try {
       await addGalleryItem({
         id: `${Date.now()}`,
@@ -100,11 +104,6 @@ export const GRFConverter = () => {
     } catch (e) {
       console.error('gallery save failed', e);
     }
-  };
-
-  const handleEditorApply = (newData: ImageData) => {
-    setSourceData(newData);
-    runPipeline(newData, { width: toPx(widthInput, unit), height: toPx(heightInput, unit) });
   };
 
   const handleUnitChange = (u: Unit) => {
@@ -282,7 +281,7 @@ export const GRFConverter = () => {
             )}
           </div>
 
-          <ImageEditor source={sourceData} onApply={handleEditorApply} />
+          <ImageEditor source={baseImage} overlays={overlays} onOverlaysChange={setOverlays} />
         </>
       )}
     </div>
