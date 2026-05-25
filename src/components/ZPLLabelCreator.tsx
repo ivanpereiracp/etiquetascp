@@ -251,13 +251,32 @@ export const ZPLLabelCreator = () => {
           ctx.strokeRect(element.x, element.y, element.width, element.height);
           bbox = { x: element.x, y: element.y, w: element.width, h: element.height };
           break;
+        case 'image': {
+          let img = imageCacheRef.current.get(element.imageDataUrl);
+          if (!img) {
+            img = new Image();
+            img.src = element.imageDataUrl;
+            imageCacheRef.current.set(element.imageDataUrl, img);
+            await new Promise<void>((res) => {
+              img!.onload = () => res();
+              img!.onerror = () => res();
+            });
+          }
+          if (img.complete && img.naturalWidth) {
+            ctx.drawImage(img, element.x, element.y, element.width, element.height);
+          } else {
+            ctx.strokeRect(element.x, element.y, element.width, element.height);
+          }
+          bbox = { x: element.x, y: element.y, w: element.width, h: element.height };
+          break;
+        }
       }
       bboxes.push(bbox);
     }
 
     bboxesRef.current = bboxes;
 
-    // Selection outline
+    // Selection outline + resize handle
     if (selectedElement !== null && bboxes[selectedElement]) {
       const b = bboxes[selectedElement];
       ctx.save();
@@ -265,6 +284,10 @@ export const ZPLLabelCreator = () => {
       ctx.setLineDash([4, 4]);
       ctx.lineWidth = 1.5;
       ctx.strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
+      ctx.setLineDash([]);
+      // bottom-right resize handle
+      ctx.fillStyle = 'hsl(200 100% 45%)';
+      ctx.fillRect(b.x + b.w - HANDLE / 2, b.y + b.h - HANDLE / 2, HANDLE, HANDLE);
       ctx.restore();
     }
   }, [elements, labelWidth, labelHeight, selectedElement]);
@@ -309,32 +332,65 @@ export const ZPLLabelCreator = () => {
     return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
   };
 
+  const getResizableSize = (el: ZPLElement): { w: number; h: number } | null => {
+    if (el.type === 'image' || el.type === 'box' || el.type === 'line') return { w: el.width, h: el.height };
+    if (el.type === 'barcode') return { w: 0, h: el.height };
+    if (el.type === 'qrcode') return { w: el.size, h: el.size };
+    if (el.type === 'text') return { w: 0, h: el.fontSize };
+    return null;
+  };
+
   const onCanvasMouseDown = (e: React.MouseEvent) => {
     const { x, y } = getCanvasPos(e);
     const bboxes = bboxesRef.current;
+
+    // Resize handle hit-test (only on selected element)
+    if (selectedElement !== null && bboxes[selectedElement]) {
+      const b = bboxes[selectedElement];
+      const hx = b.x + b.w;
+      const hy = b.y + b.h;
+      if (Math.abs(x - hx) <= HANDLE && Math.abs(y - hy) <= HANDLE) {
+        const el = elements[selectedElement];
+        resizeRef.current = { index: selectedElement, startW: b.w, startH: b.h, startX: el.x, startY: el.y };
+        return;
+      }
+    }
+
     let hit = -1;
     for (let i = bboxes.length - 1; i >= 0; i--) {
       const b = bboxes[i];
-      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
-        hit = i;
-        break;
-      }
+      if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { hit = i; break; }
     }
     if (hit >= 0) {
       setSelectedElement(hit);
-      dragRef.current = {
-        index: hit,
-        offsetX: x - elements[hit].x,
-        offsetY: y - elements[hit].y,
-      };
+      dragRef.current = { index: hit, offsetX: x - elements[hit].x, offsetY: y - elements[hit].y };
     } else {
       setSelectedElement(null);
     }
   };
 
   const onCanvasMouseMove = (e: React.MouseEvent) => {
-    if (!dragRef.current) return;
     const { x, y } = getCanvasPos(e);
+    if (resizeRef.current) {
+      const r = resizeRef.current;
+      const el = elements[r.index];
+      if (!el) return;
+      const newW = Math.max(8, Math.round(x - r.startX));
+      const newH = Math.max(8, Math.round(y - r.startY));
+      if (el.type === 'image' || el.type === 'box') {
+        updateElement(r.index, { width: newW, height: newH });
+      } else if (el.type === 'line') {
+        updateElement(r.index, { width: newW, height: Math.max(1, newH) });
+      } else if (el.type === 'qrcode') {
+        updateElement(r.index, { size: Math.max(2, Math.round(newW / 20)) });
+      } else if (el.type === 'barcode') {
+        updateElement(r.index, { height: newH });
+      } else if (el.type === 'text') {
+        updateElement(r.index, { fontSize: Math.max(8, newH) });
+      }
+      return;
+    }
+    if (!dragRef.current) return;
     const d = dragRef.current;
     updateElement(d.index, {
       x: Math.max(0, Math.round(x - d.offsetX)),
@@ -344,6 +400,42 @@ export const ZPLLabelCreator = () => {
 
   const onCanvasMouseUp = () => {
     dragRef.current = null;
+    resizeRef.current = null;
+  };
+
+  const handleImageFile = async (file: File) => {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+    const img = new Image();
+    img.src = dataUrl;
+    await new Promise<void>((res) => { img.onload = () => res(); });
+    const maxW = Math.min(img.naturalWidth, Math.round(labelWidth * 0.6));
+    const ratio = maxW / img.naturalWidth;
+    const w = Math.max(20, maxW);
+    const h = Math.max(20, Math.round(img.naturalHeight * ratio));
+    // Build GRF inline so the exported ZPL contains a printable raster
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    const tctx = tmp.getContext('2d')!;
+    tctx.fillStyle = '#fff';
+    tctx.fillRect(0, 0, w, h);
+    tctx.drawImage(img, 0, 0, w, h);
+    const idata = tctx.getImageData(0, 0, w, h);
+    const bw = convertToBlackAndWhite(idata, 128);
+    const grfName = `IMG${Date.now().toString(36).toUpperCase().slice(-5)}`;
+    const grf = convertToGRF(bw, grfName);
+    setElements((prev) => {
+      const next: ZPLElement[] = [
+        ...prev,
+        { type: 'image', x: 50, y: 50, width: w, height: h, imageDataUrl: dataUrl, grfData: grf, grfName },
+      ];
+      setSelectedElement(next.length - 1);
+      return next;
+    });
   };
 
   return (
