@@ -454,24 +454,16 @@ export const ZPLLabelCreator = () => {
         {/* Label Settings */}
         <div className="grid md:grid-cols-3 gap-4 mb-6">
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">Largura (dots): {labelWidth}</label>
-            <Slider
-              value={[labelWidth]}
-              onValueChange={(v) => setLabelWidth(v[0])}
-              min={100}
-              max={800}
-              step={10}
-            />
+            <label className="text-sm text-muted-foreground">
+              Largura: {labelWidth} dots ({dotsToMm(labelWidth)} mm)
+            </label>
+            <Slider value={[labelWidth]} onValueChange={(v) => setLabelWidth(v[0])} min={100} max={1200} step={8} />
           </div>
           <div className="space-y-2">
-            <label className="text-sm text-muted-foreground">Altura (dots): {labelHeight}</label>
-            <Slider
-              value={[labelHeight]}
-              onValueChange={(v) => setLabelHeight(v[0])}
-              min={100}
-              max={1700}
-              step={10}
-            />
+            <label className="text-sm text-muted-foreground">
+              Altura: {labelHeight} dots ({dotsToMm(labelHeight)} mm)
+            </label>
+            <Slider value={[labelHeight]} onValueChange={(v) => setLabelHeight(v[0])} min={100} max={2400} step={8} />
           </div>
           <div className="space-y-2">
             <label className="text-sm text-muted-foreground">DPI</label>
@@ -506,6 +498,20 @@ export const ZPLLabelCreator = () => {
           <button onClick={() => addElement('line')} className="tool-button flex items-center gap-2">
             <Minus size={16} /> Linha
           </button>
+          <button onClick={() => addElement('image')} className="tool-button flex items-center gap-2">
+            <ImageIcon size={16} /> Imagem
+          </button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImageFile(f);
+              if (e.target) e.target.value = '';
+            }}
+          />
         </div>
       </div>
 
