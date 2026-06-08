@@ -6,7 +6,7 @@ export interface ZPLLabel {
 }
 
 export type ZPLElement =
-  | { type: 'text'; x: number; y: number; font: string; fontSize: number; content: string }
+  | { type: 'text'; x: number; y: number; font: string; fontSize: number; content: string; previewFont?: string }
   | {
       type: 'barcode';
       x: number;
@@ -139,6 +139,22 @@ export const fontOptions = [
   { value: 'G', label: 'Font G (60x40)' },
   { value: 'H', label: 'Font H (21x13)' },
 ];
+
+// Web preview fonts for multi-language text rendering on the canvas.
+// These are only used for preview — the ZPL output still uses the printer font selected above.
+export const previewFontOptions = [
+  { value: 'latin', label: 'Latino (padrão)', css: '"Noto Sans", Arial, sans-serif' },
+  { value: 'jp', label: 'Japonês (日本語)', css: '"Noto Sans JP", "Noto Sans", sans-serif' },
+  { value: 'sc', label: 'Chinês Simplificado (简体)', css: '"Noto Sans SC", "Noto Sans", sans-serif' },
+  { value: 'tc', label: 'Chinês Tradicional (繁體)', css: '"Noto Sans TC", "Noto Sans", sans-serif' },
+  { value: 'ar', label: 'Árabe (العربية)', css: '"Noto Sans Arabic", "Noto Naskh Arabic", sans-serif' },
+  { value: 'ru', label: 'Russo / Cirílico (Русский)', css: '"Noto Sans", Arial, sans-serif' },
+];
+
+export const getPreviewFontCss = (value?: string): string => {
+  const f = previewFontOptions.find((p) => p.value === value);
+  return f ? f.css : 'Arial, sans-serif';
+};
 
 export const barcodeOptions = [
   { value: 'C', label: 'Code 128' },

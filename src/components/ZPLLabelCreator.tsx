@@ -26,6 +26,8 @@ import {
   barcodeOptions,
   dpiOptions,
   barcodeTypeToJsbarcode,
+  previewFontOptions,
+  getPreviewFontCss,
 } from '@/utils/zplGenerator';
 import { downloadFile, convertToBlackAndWhite, convertToGRF } from '@/utils/imageProcessing';
 import { Slider } from '@/components/ui/slider';
@@ -79,6 +81,7 @@ export const ZPLLabelCreator = () => {
   const [labelWidth, setLabelWidth] = useState(400);
   const [labelHeight, setLabelHeight] = useState(300);
   const [dpi, setDpi] = useState(203);
+  const [bgColor, setBgColor] = useState('#ffffff');
   const [elements, setElements] = useState<ZPLElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<number | null>(null);
   const [zplCode, setZplCode] = useState('');
@@ -97,20 +100,24 @@ export const ZPLLabelCreator = () => {
         if (s.labelWidth) setLabelWidth(s.labelWidth);
         if (s.labelHeight) setLabelHeight(s.labelHeight);
         if (s.dpi) setDpi(s.dpi);
+        if (s.bgColor) setBgColor(s.bgColor);
         if (Array.isArray(s.elements)) setElements(s.elements);
       } catch {}
     }
   }, []);
   useEffect(() => {
-    localStorage.setItem('zit_zpl_state_v1', JSON.stringify({ labelWidth, labelHeight, dpi, elements }));
-  }, [labelWidth, labelHeight, dpi, elements]);
+    localStorage.setItem(
+      'zit_zpl_state_v1',
+      JSON.stringify({ labelWidth, labelHeight, dpi, bgColor, elements }),
+    );
+  }, [labelWidth, labelHeight, dpi, bgColor, elements]);
 
 
   const addElement = (type: ZPLElement['type']) => {
     let newElement: ZPLElement;
     switch (type) {
       case 'text':
-        newElement = { type: 'text', x: 50, y: 50, font: '0', fontSize: 30, content: 'Texto' };
+        newElement = { type: 'text', x: 50, y: 50, font: '0', fontSize: 30, content: 'Texto', previewFont: 'latin' };
         break;
       case 'barcode':
         newElement = {
@@ -207,7 +214,7 @@ export const ZPLLabelCreator = () => {
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, labelWidth, labelHeight);
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
@@ -218,7 +225,7 @@ export const ZPLLabelCreator = () => {
       let bbox = { x: element.x, y: element.y, w: 20, h: 20 };
       switch (element.type) {
         case 'text': {
-          ctx.font = `${element.fontSize}px Arial`;
+          ctx.font = `${element.fontSize}px ${getPreviewFontCss(element.previewFont)}`;
           const metrics = ctx.measureText(element.content);
           ctx.fillText(element.content, element.x, element.y + element.fontSize);
           bbox = { x: element.x, y: element.y, w: metrics.width, h: element.fontSize + 4 };
@@ -295,7 +302,7 @@ export const ZPLLabelCreator = () => {
       ctx.fillRect(b.x + b.w - HANDLE / 2, b.y + b.h - HANDLE / 2, HANDLE, HANDLE);
       ctx.restore();
     }
-  }, [elements, labelWidth, labelHeight, selectedElement]);
+  }, [elements, labelWidth, labelHeight, selectedElement, bgColor]);
 
   useEffect(() => {
     drawPreview();
@@ -486,6 +493,31 @@ export const ZPLLabelCreator = () => {
           </div>
         </div>
 
+        {/* Background color for preview testing */}
+        <div className="flex items-center gap-3 mb-4">
+          <label className="text-sm text-muted-foreground">Cor de fundo (preview):</label>
+          <input
+            type="color"
+            value={bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="h-9 w-14 rounded border border-border cursor-pointer bg-transparent"
+            title="Cor de fundo da etiqueta (apenas preview)"
+          />
+          <input
+            type="text"
+            value={bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="px-2 py-1 rounded bg-input border border-border text-sm w-28 font-mono"
+          />
+          <button
+            type="button"
+            onClick={() => setBgColor('#ffffff')}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Restaurar branco
+          </button>
+        </div>
+
         {/* Add Element Buttons */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button onClick={() => addElement('text')} className="tool-button flex items-center gap-2">
@@ -524,7 +556,10 @@ export const ZPLLabelCreator = () => {
         {/* Preview */}
         <div className="glass-panel rounded-xl p-6">
           <h3 className="font-semibold mb-4">Preview da Etiqueta</h3>
-          <div className="bg-white rounded-lg p-4 flex items-center justify-center overflow-auto">
+          <div
+            className="rounded-lg p-4 flex items-center justify-center overflow-auto"
+            style={{ backgroundColor: bgColor }}
+          >
             <canvas
               ref={canvasRef}
               width={labelWidth}
@@ -664,6 +699,24 @@ export const ZPLLabelCreator = () => {
                               className="w-full px-2 py-1 rounded bg-input border border-border"
                             />
                           </div>
+                        </div>
+                        <div>
+                          <label className="text-muted-foreground">Fonte de preview (idioma)</label>
+                          <select
+                            value={element.previewFont ?? 'latin'}
+                            onChange={(e) => updateElement(index, { previewFont: e.target.value })}
+                            className="w-full px-2 py-1 rounded bg-white text-black border border-border"
+                          >
+                            {previewFontOptions.map((f) => (
+                              <option key={f.value} value={f.value} className="bg-white text-black">
+                                {f.label}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Define a fonte usada apenas no preview (japonês, chinês, árabe, russo, etc.).
+                            A impressão Zebra usa a fonte selecionada acima.
+                          </p>
                         </div>
                       </>
                     )}

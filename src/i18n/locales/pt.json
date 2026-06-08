@@ -11,6 +11,7 @@
     "zpl": "Etiquetas ZPL",
     "barcode": "Códigos de Barras",
     "viewer": "ZPL Viewer",
+    "ocr": "OCR e Tradução",
     "history": "Histórico"
   },
   "viewer": {
