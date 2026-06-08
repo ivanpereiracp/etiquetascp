@@ -9,6 +9,8 @@ export interface AppSettings {
   backgroundHsl: string;
   fontFamily: string;
   editorBg: string;
+  printerEndpoint: string;
+  printerName: string;
 }
 
 const DEFAULTS: AppSettings = {
@@ -20,6 +22,8 @@ const DEFAULTS: AppSettings = {
   backgroundHsl: '220 20% 10%',
   fontFamily: 'Inter',
   editorBg: '#ffffff',
+  printerEndpoint: '',
+  printerName: '',
 };
 
 const STORAGE_KEY = 'zit_settings_v1';
