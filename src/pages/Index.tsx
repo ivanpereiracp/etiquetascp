@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Printer, FileCode, Contrast, Grid3X3, Tag, Barcode, Eye, History, Languages } from 'lucide-react';
+import { Printer, FileCode, Contrast, Grid3X3, Tag, Barcode, Eye, History, Languages, Package } from 'lucide-react';
 import { GRFConverter } from '@/components/GRFConverter';
 import { BlackWhiteConverter } from '@/components/BlackWhiteConverter';
 import { RasterConverter } from '@/components/RasterConverter';
@@ -9,10 +9,11 @@ import { BarcodeGenerator } from '@/components/BarcodeGenerator';
 import { ZPLViewer } from '@/components/ZPLViewer';
 import { HistoryPanel } from '@/components/HistoryPanel';
 import { OCRTranslator } from '@/components/OCRTranslator';
+import { BoxSimulator } from '@/components/BoxSimulator';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { useSettings } from '@/contexts/SettingsContext';
 
-type TabType = 'grf' | 'bw' | 'raster' | 'zpl' | 'barcode' | 'viewer' | 'ocr' | 'history';
+type TabType = 'grf' | 'bw' | 'raster' | 'zpl' | 'barcode' | 'viewer' | 'ocr' | 'box' | 'history';
 
 const Index = () => {
   const { t } = useTranslation();
@@ -35,6 +36,7 @@ const Index = () => {
     { id: 'barcode' as TabType, label: t('tabs.barcode'), icon: Barcode },
     { id: 'viewer' as TabType, label: t('tabs.viewer'), icon: Eye },
     { id: 'ocr' as TabType, label: t('tabs.ocr'), icon: Languages },
+    { id: 'box' as TabType, label: t('tabs.box'), icon: Package },
     { id: 'history' as TabType, label: t('tabs.history'), icon: History },
   ];
 
@@ -92,6 +94,7 @@ const Index = () => {
         <div hidden={activeTab !== 'barcode'}><BarcodeGenerator /></div>
         <div hidden={activeTab !== 'viewer'}><ZPLViewer /></div>
         <div hidden={activeTab !== 'ocr'}><OCRTranslator /></div>
+        <div hidden={activeTab !== 'box'}><BoxSimulator /></div>
         <div hidden={activeTab !== 'history'}><HistoryPanel /></div>
       </main>
 

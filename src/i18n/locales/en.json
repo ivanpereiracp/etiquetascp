@@ -12,7 +12,27 @@
     "barcode": "Barcodes",
     "viewer": "ZPL Viewer",
     "ocr": "OCR & Translate",
+    "box": "Box Simulation",
     "history": "History"
+  },
+  "box": {
+    "title": "Label on box simulation",
+    "labelSource": "Label source",
+    "uploadImage": "Upload image",
+    "renderZpl": "Render ZPL as label",
+    "boxColor": "Box color",
+    "width": "Width",
+    "height": "Height",
+    "depth": "Depth",
+    "rotX": "Tilt X",
+    "rotY": "Rotation Y",
+    "lighting": "Lighting",
+    "labelX": "Label X position",
+    "labelY": "Label Y position",
+    "labelScale": "Label size",
+    "labelRot": "Label rotation",
+    "exportPng": "Export PNG",
+    "reset": "Reset"
   },
   "viewer": {
     "code": "ZPL code",
