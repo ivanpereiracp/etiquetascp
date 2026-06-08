@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, FileCode, Settings, RotateCw, Save, Move } from 'lucide-react';
+import { Download, FileCode, Settings, RotateCw, Save, Move, Printer } from 'lucide-react';
 import { ImageUploader } from './ImageUploader';
 import { ImageGallery } from './ImageGallery';
 import { ImageEditor, compositeOverlays, TextOverlay } from './ImageEditor';
@@ -18,8 +18,12 @@ import { rotateImageData, Rotation } from '@/utils/rotation';
 import { addGalleryItem, imageDataToDataUrl } from '@/utils/db';
 import { Unit, fromPx, toPx } from '@/utils/units';
 import { Slider } from '@/components/ui/slider';
+import { sendZPLToAgent, wrapGRFForPrint } from '@/utils/zebraPrint';
+import { useSettings } from '@/contexts/SettingsContext';
+import { toast } from 'sonner';
 
 export const GRFConverter = () => {
+  const { settings } = useSettings();
   // Base image = original loaded (immutable for re-edit). Source = base + overlays composited.
   const [baseImage, setBaseImage] = useState<ImageData | null>(null);
   const [overlays, setOverlays] = useState<TextOverlay[]>([]);
@@ -293,6 +297,27 @@ export const GRFConverter = () => {
               <button onClick={handleDownloadPreviewTIFF} className="tool-button flex items-center gap-2">
                 <Download size={20} />
                 Download Preview TIF
+              </button>
+              <button
+                onClick={async () => {
+                  if (!grfContent) return;
+                  if (!settings.printerEndpoint) {
+                    toast.error('Configure a URL do agente Zebra em Configurações.');
+                    return;
+                  }
+                  try {
+                    const safe = imageName.toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 8) || 'IMAGE';
+                    const zpl = wrapGRFForPrint(grfContent, safe);
+                    await sendZPLToAgent(zpl, { endpoint: settings.printerEndpoint, printerName: settings.printerName });
+                    toast.success('Etiqueta enviada para a impressora Zebra.');
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Falha ao imprimir.');
+                  }
+                }}
+                className="tool-button flex items-center gap-2"
+                title="Envia a imagem (não o texto GRF) para a Zebra, como o SAP faz"
+              >
+                <Printer size={20} /> Imprimir na Zebra
               </button>
               <button
                 onClick={async () => {

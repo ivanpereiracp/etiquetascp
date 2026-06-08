@@ -12,7 +12,11 @@ import {
   FileText,
   FileImage,
   Image as ImageIcon,
+  Printer,
 } from 'lucide-react';
+import { sendZPLToAgent } from '@/utils/zebraPrint';
+import { useSettings } from '@/contexts/SettingsContext';
+import { toast } from 'sonner';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
 import {
@@ -71,6 +75,7 @@ const renderQRToCanvas = async (
 
 export const ZPLLabelCreator = () => {
   const { t } = useTranslation();
+  const { settings } = useSettings();
   const [labelWidth, setLabelWidth] = useState(400);
   const [labelHeight, setLabelHeight] = useState(300);
   const [dpi, setDpi] = useState(203);
@@ -542,6 +547,24 @@ export const ZPLLabelCreator = () => {
             </button>
             <button onClick={downloadPDF} className="tool-button flex items-center gap-2">
               <Download size={18} /> Salvar PDF
+            </button>
+            <button
+              onClick={async () => {
+                if (!settings.printerEndpoint) {
+                  toast.error('Configure a URL do agente Zebra em Configurações.');
+                  return;
+                }
+                try {
+                  const zpl = generateZPL({ width: labelWidth, height: labelHeight, dpi, elements });
+                  await sendZPLToAgent(zpl, { endpoint: settings.printerEndpoint, printerName: settings.printerName });
+                  toast.success('Etiqueta enviada para a impressora Zebra.');
+                } catch (e: any) {
+                  toast.error(e?.message || 'Falha ao imprimir.');
+                }
+              }}
+              className="tool-button flex items-center gap-2"
+            >
+              <Printer size={18} /> Imprimir na Zebra
             </button>
           </div>
         </div>
