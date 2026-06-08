@@ -155,6 +155,39 @@ export const SettingsPanel = () => {
             </select>
           </section>
 
+          {/* Zebra printer */}
+          <section className="space-y-3">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              Impressora Zebra (servidor interno)
+            </h3>
+            <div className="space-y-2">
+              <label className="text-sm">URL do agente de impressão</label>
+              <input
+                type="text"
+                placeholder="http://servidor-interno:9100/print"
+                value={settings.printerEndpoint}
+                onChange={(e) => update({ printerEndpoint: e.target.value })}
+                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Endpoint HTTP do seu serviço Windows que recebe ZPL via POST (text/plain) e envia à Zebra.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm">Nome da impressora (opcional)</label>
+              <input
+                type="text"
+                placeholder="ZEBRA_ZD420"
+                value={settings.printerName}
+                onChange={(e) => update({ printerName: e.target.value })}
+                className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enviado como ?printer=NOME na URL.
+              </p>
+            </div>
+          </section>
+
           <button
             onClick={reset}
             className="tool-button w-full flex items-center justify-center gap-2"
