@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, FileCode, Settings, RotateCw, Save, Move } from 'lucide-react';
+import { Download, FileCode, Settings, RotateCw, Save, Move, Printer } from 'lucide-react';
 import { ImageUploader } from './ImageUploader';
 import { ImageGallery } from './ImageGallery';
 import { ImageEditor, compositeOverlays, TextOverlay } from './ImageEditor';
@@ -18,6 +18,9 @@ import { rotateImageData, Rotation } from '@/utils/rotation';
 import { addGalleryItem, imageDataToDataUrl } from '@/utils/db';
 import { Unit, fromPx, toPx } from '@/utils/units';
 import { Slider } from '@/components/ui/slider';
+import { sendZPLToAgent, wrapGRFForPrint } from '@/utils/zebraPrint';
+import { useSettings } from '@/contexts/SettingsContext';
+import { toast } from 'sonner';
 
 export const GRFConverter = () => {
   // Base image = original loaded (immutable for re-edit). Source = base + overlays composited.
