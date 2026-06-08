@@ -10,6 +10,8 @@ import { toast } from '@/hooks/use-toast';
 import { renderLabelaryPNG, buildLabelaryViewerUrl, type LabelaryRotation, type LabelaryDpmm } from '@/utils/labelary';
 import { isWebUsbSupported, printZPLViaWebUSB } from '@/utils/webusbZebra';
 import { addHistoryItem } from '@/utils/db';
+import { sendZPLToAgent } from '@/utils/zebraPrint';
+import { useSettings } from '@/contexts/SettingsContext';
 
 const DEFAULT_ZPL = `^XA
 ^FO50,50^A0N,40,40^FDHello Labelary^FS
