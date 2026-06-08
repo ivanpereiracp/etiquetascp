@@ -23,6 +23,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
 
 export const GRFConverter = () => {
+  const { settings } = useSettings();
   // Base image = original loaded (immutable for re-edit). Source = base + overlays composited.
   const [baseImage, setBaseImage] = useState<ImageData | null>(null);
   const [overlays, setOverlays] = useState<TextOverlay[]>([]);
