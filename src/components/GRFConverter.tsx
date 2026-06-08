@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, FileCode, Settings, RotateCw, Save } from 'lucide-react';
+import { Download, FileCode, Settings, RotateCw, Save, Move } from 'lucide-react';
 import { ImageUploader } from './ImageUploader';
 import { ImageGallery } from './ImageGallery';
 import { ImageEditor, compositeOverlays, TextOverlay } from './ImageEditor';
@@ -13,6 +13,7 @@ import {
   LABEL_MAX_WIDTH_PX,
   LABEL_MAX_HEIGHT_PX,
 } from '@/utils/imageProcessing';
+import { downloadCanvasAsTIFF } from '@/utils/tiff';
 import { rotateImageData, Rotation } from '@/utils/rotation';
 import { addGalleryItem, imageDataToDataUrl } from '@/utils/db';
 import { Unit, fromPx, toPx } from '@/utils/units';
