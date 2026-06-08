@@ -8,12 +8,13 @@ import {
   type Photometry,
   type Compression,
 } from '@/utils/imageProcessing';
+import { downloadCanvasAsTIFF } from '@/utils/tiff';
 
 export const RasterConverter = () => {
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [processedData, setProcessedData] = useState<ImageData | null>(null);
   const [rawData, setRawData] = useState<Uint8Array | null>(null);
-  const [photometry, setPhotometry] = useState<Photometry>('rgb');
+  const [photometry, setPhotometry] = useState<Photometry>('rgb-palette');
   const [compression, setCompression] = useState<Compression>('uncompressed');
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const originalCanvasRef = useRef<HTMLCanvasElement>(null);
