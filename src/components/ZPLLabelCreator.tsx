@@ -697,6 +697,24 @@ export const ZPLLabelCreator = () => {
                             />
                           </div>
                         </div>
+                        <div>
+                          <label className="text-muted-foreground">Fonte de preview (idioma)</label>
+                          <select
+                            value={element.previewFont ?? 'latin'}
+                            onChange={(e) => updateElement(index, { previewFont: e.target.value })}
+                            className="w-full px-2 py-1 rounded bg-white text-black border border-border"
+                          >
+                            {previewFontOptions.map((f) => (
+                              <option key={f.value} value={f.value} className="bg-white text-black">
+                                {f.label}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Define a fonte usada apenas no preview (japonês, chinês, árabe, russo, etc.).
+                            A impressão Zebra usa a fonte selecionada acima.
+                          </p>
+                        </div>
                       </>
                     )}
 
