@@ -30,11 +30,15 @@ export const GRFConverter = () => {
   const [imageName, setImageName] = useState('IMAGE');
   const [rotation, setRotation] = useState<Rotation>(0);
   const [zoom, setZoom] = useState(100);
+  const [codeZoom, setCodeZoom] = useState(100);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
   const [unit, setUnit] = useState<Unit>('px');
   const [widthInput, setWidthInput] = useState<number>(0);
   const [heightInput, setHeightInput] = useState<number>(0);
   const [galleryKey, setGalleryKey] = useState(0);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const dragRef = useRef<{ active: boolean; startX: number; startY: number; baseX: number; baseY: number }>({ active: false, startX: 0, startY: 0, baseX: 0, baseY: 0 });
 
   const runPipeline = (src: ImageData, opts?: { width?: number; height?: number }) => {
     const rotated = rotateImageData(src, rotation);
