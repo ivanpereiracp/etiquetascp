@@ -133,6 +133,20 @@ export const GRFConverter = () => {
   const handleDownloadPreview = async () => {
     if (previewCanvasRef.current) await downloadCanvasAsImage(previewCanvasRef.current, `${imageName}_preview.png`);
   };
+  const handleDownloadPreviewTIFF = () => {
+    if (previewCanvasRef.current) downloadCanvasAsTIFF(previewCanvasRef.current, `${imageName}_preview.tif`);
+  };
+  const resetPan = () => { setPanX(0); setPanY(0); };
+
+  const onPreviewMouseDown = (e: React.MouseEvent) => {
+    dragRef.current = { active: true, startX: e.clientX, startY: e.clientY, baseX: panX, baseY: panY };
+  };
+  const onPreviewMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current.active) return;
+    setPanX(dragRef.current.baseX + (e.clientX - dragRef.current.startX));
+    setPanY(dragRef.current.baseY + (e.clientY - dragRef.current.startY));
+  };
+  const endDrag = () => { dragRef.current.active = false; };
 
   return (
     <div className="space-y-6 animate-fade-in">
