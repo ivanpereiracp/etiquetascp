@@ -12,7 +12,11 @@ import {
   FileText,
   FileImage,
   Image as ImageIcon,
+  Printer,
 } from 'lucide-react';
+import { sendZPLToAgent } from '@/utils/zebraPrint';
+import { useSettings } from '@/contexts/SettingsContext';
+import { toast } from 'sonner';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
 import {
