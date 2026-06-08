@@ -12,7 +12,27 @@
     "barcode": "Códigos de Barras",
     "viewer": "Visor ZPL",
     "ocr": "OCR y Traducción",
+    "box": "Simulación en Caja",
     "history": "Historial"
+  },
+  "box": {
+    "title": "Simulación de etiqueta en caja",
+    "labelSource": "Origen de la etiqueta",
+    "uploadImage": "Subir imagen",
+    "renderZpl": "Renderizar ZPL como etiqueta",
+    "boxColor": "Color de la caja",
+    "width": "Ancho",
+    "height": "Alto",
+    "depth": "Profundidad",
+    "rotX": "Inclinación X",
+    "rotY": "Rotación Y",
+    "lighting": "Iluminación",
+    "labelX": "Posición X",
+    "labelY": "Posición Y",
+    "labelScale": "Tamaño etiqueta",
+    "labelRot": "Rotación etiqueta",
+    "exportPng": "Exportar PNG",
+    "reset": "Restaurar"
   },
   "viewer": {
     "code": "Código ZPL",
