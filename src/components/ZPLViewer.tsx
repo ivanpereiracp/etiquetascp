@@ -20,6 +20,7 @@ const DEFAULT_ZPL = `^XA
 
 export const ZPLViewer = () => {
   const { t } = useTranslation();
+  const { settings } = useSettings();
   const [zpl, setZpl] = useState(DEFAULT_ZPL);
   const [dpmm, setDpmm] = useState<LabelaryDpmm>(8);
   const [widthIn, setWidthIn] = useState(4);
