@@ -192,6 +192,23 @@ export const ZPLViewer = () => {
                 <Printer size={14} /> {t('viewer.usbPrint')}
               </Button>
             )}
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!settings.printerEndpoint) {
+                  toast({ title: 'Configure a URL do agente Zebra em Configurações.', variant: 'destructive' });
+                  return;
+                }
+                try {
+                  await sendZPLToAgent(zpl, { endpoint: settings.printerEndpoint, printerName: settings.printerName });
+                  toast({ title: 'Etiqueta enviada para a impressora Zebra.' });
+                } catch (e: any) {
+                  toast({ title: 'Falha ao imprimir', description: e?.message ?? String(e), variant: 'destructive' });
+                }
+              }}
+            >
+              <Printer size={14} /> Imprimir na Zebra (servidor)
+            </Button>
           </div>
         </div>
       </div>
