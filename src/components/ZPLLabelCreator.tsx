@@ -493,6 +493,31 @@ export const ZPLLabelCreator = () => {
           </div>
         </div>
 
+        {/* Background color for preview testing */}
+        <div className="flex items-center gap-3 mb-4">
+          <label className="text-sm text-muted-foreground">Cor de fundo (preview):</label>
+          <input
+            type="color"
+            value={bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="h-9 w-14 rounded border border-border cursor-pointer bg-transparent"
+            title="Cor de fundo da etiqueta (apenas preview)"
+          />
+          <input
+            type="text"
+            value={bgColor}
+            onChange={(e) => setBgColor(e.target.value)}
+            className="px-2 py-1 rounded bg-input border border-border text-sm w-28 font-mono"
+          />
+          <button
+            type="button"
+            onClick={() => setBgColor('#ffffff')}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Restaurar branco
+          </button>
+        </div>
+
         {/* Add Element Buttons */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button onClick={() => addElement('text')} className="tool-button flex items-center gap-2">
