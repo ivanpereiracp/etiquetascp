@@ -8,12 +8,13 @@ import {
   type Photometry,
   type Compression,
 } from '@/utils/imageProcessing';
+import { downloadCanvasAsTIFF } from '@/utils/tiff';
 
 export const RasterConverter = () => {
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [processedData, setProcessedData] = useState<ImageData | null>(null);
   const [rawData, setRawData] = useState<Uint8Array | null>(null);
-  const [photometry, setPhotometry] = useState<Photometry>('rgb');
+  const [photometry, setPhotometry] = useState<Photometry>('rgb-palette');
   const [compression, setCompression] = useState<Compression>('uncompressed');
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const originalCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -62,6 +63,9 @@ export const RasterConverter = () => {
   const handleDownloadImage = async () => {
     if (previewCanvasRef.current) await downloadCanvasAsImage(previewCanvasRef.current, `raster_${photometry}.png`);
   };
+  const handleDownloadTIFF = () => {
+    if (previewCanvasRef.current) downloadCanvasAsTIFF(previewCanvasRef.current, `raster_${photometry}.tif`);
+  };
   const handleDownloadRaw = () => {
     if (rawData) {
       const ab = new ArrayBuffer(rawData.length);
@@ -104,9 +108,8 @@ export const RasterConverter = () => {
                 onChange={(e) => onPhotometryChange(e.target.value as Photometry)}
                 className="w-full px-4 py-2 rounded-lg border border-border bg-white text-black font-medium focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="rgb" className="bg-white text-black">RGB</option>
                 <option value="rgb-palette" className="bg-white text-black">RGB Palette</option>
-                <option value="uncompressed" className="bg-white text-black">Uncompressed</option>
+                <option value="rgb" className="bg-white text-black">RGB</option>
               </select>
             </div>
 
@@ -148,7 +151,10 @@ export const RasterConverter = () => {
 
           <div className="flex flex-wrap gap-4 items-center">
             <button onClick={handleDownloadImage} className="download-button">
-              <Download size={20} /> Download Imagem PNG
+              <Download size={20} /> Download PNG
+            </button>
+            <button onClick={handleDownloadTIFF} className="tool-button flex items-center gap-2">
+              <Download size={20} /> Download TIF
             </button>
             <button onClick={handleDownloadRaw} className="tool-button flex items-center gap-2">
               <Download size={20} /> Download Dados RAW

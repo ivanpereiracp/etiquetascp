@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, FileCode, Settings, RotateCw, Save } from 'lucide-react';
+import { Download, FileCode, Settings, RotateCw, Save, Move } from 'lucide-react';
 import { ImageUploader } from './ImageUploader';
 import { ImageGallery } from './ImageGallery';
 import { ImageEditor, compositeOverlays, TextOverlay } from './ImageEditor';
@@ -13,6 +13,7 @@ import {
   LABEL_MAX_WIDTH_PX,
   LABEL_MAX_HEIGHT_PX,
 } from '@/utils/imageProcessing';
+import { downloadCanvasAsTIFF } from '@/utils/tiff';
 import { rotateImageData, Rotation } from '@/utils/rotation';
 import { addGalleryItem, imageDataToDataUrl } from '@/utils/db';
 import { Unit, fromPx, toPx } from '@/utils/units';
@@ -29,11 +30,15 @@ export const GRFConverter = () => {
   const [imageName, setImageName] = useState('IMAGE');
   const [rotation, setRotation] = useState<Rotation>(0);
   const [zoom, setZoom] = useState(100);
+  const [codeZoom, setCodeZoom] = useState(100);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
   const [unit, setUnit] = useState<Unit>('px');
   const [widthInput, setWidthInput] = useState<number>(0);
   const [heightInput, setHeightInput] = useState<number>(0);
   const [galleryKey, setGalleryKey] = useState(0);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const dragRef = useRef<{ active: boolean; startX: number; startY: number; baseX: number; baseY: number }>({ active: false, startX: 0, startY: 0, baseX: 0, baseY: 0 });
 
   const runPipeline = (src: ImageData, opts?: { width?: number; height?: number }) => {
     const rotated = rotateImageData(src, rotation);
@@ -128,6 +133,20 @@ export const GRFConverter = () => {
   const handleDownloadPreview = async () => {
     if (previewCanvasRef.current) await downloadCanvasAsImage(previewCanvasRef.current, `${imageName}_preview.png`);
   };
+  const handleDownloadPreviewTIFF = () => {
+    if (previewCanvasRef.current) downloadCanvasAsTIFF(previewCanvasRef.current, `${imageName}_preview.tif`);
+  };
+  const resetPan = () => { setPanX(0); setPanY(0); };
+
+  const onPreviewMouseDown = (e: React.MouseEvent) => {
+    dragRef.current = { active: true, startX: e.clientX, startY: e.clientY, baseX: panX, baseY: panY };
+  };
+  const onPreviewMouseMove = (e: React.MouseEvent) => {
+    if (!dragRef.current.active) return;
+    setPanX(dragRef.current.baseX + (e.clientX - dragRef.current.startX));
+    setPanY(dragRef.current.baseY + (e.clientY - dragRef.current.startY));
+  };
+  const endDrag = () => { dragRef.current.active = false; };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -221,26 +240,42 @@ export const GRFConverter = () => {
               </div>
             </div>
 
-            <ZoomControl value={zoom} onChange={setZoom} label="Zoom preview" />
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <ZoomControl value={zoom} onChange={setZoom} label="Zoom preview" />
+                <button onClick={resetPan} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                  <Move size={12} /> Reposicionar preview (arraste para mover)
+                </button>
+              </div>
+              <div>
+                <ZoomControl value={codeZoom} onChange={setCodeZoom} label="Zoom código" />
+              </div>
+            </div>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <h4 className="text-sm text-muted-foreground mb-3">Preview Processado</h4>
-                <div className="bg-white rounded-lg p-4 flex items-center justify-center min-h-[200px] overflow-auto">
+                <div
+                  className="bg-white rounded-lg p-8 flex items-center justify-center min-h-[240px] overflow-hidden cursor-grab active:cursor-grabbing select-none"
+                  onMouseDown={onPreviewMouseDown}
+                  onMouseMove={onPreviewMouseMove}
+                  onMouseUp={endDrag}
+                  onMouseLeave={endDrag}
+                >
                   <canvas
                     ref={previewCanvasRef}
-                    style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}
-                    className="object-contain"
+                    style={{ transform: `translate(${panX}px, ${panY}px) scale(${zoom / 100})`, transformOrigin: 'center center' }}
+                    className="object-contain pointer-events-none"
                   />
                 </div>
               </div>
 
               <div>
                 <h4 className="text-sm text-muted-foreground mb-3">Código GRF</h4>
-                <div className="bg-muted rounded-lg p-4 h-[200px] overflow-auto">
-                  <pre className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
-                    {grfContent.substring(0, 500)}
-                    {grfContent.length > 500 && '...'}
+                <div className="bg-muted rounded-lg p-4 h-[240px] overflow-auto">
+                  <pre className="font-mono text-foreground break-all whitespace-pre-wrap" style={{ fontSize: `${(12 * codeZoom) / 100}px`, lineHeight: 1.4 }}>
+                    {grfContent.substring(0, 1500)}
+                    {grfContent.length > 1500 && '...'}
                   </pre>
                 </div>
               </div>
@@ -254,6 +289,10 @@ export const GRFConverter = () => {
               <button onClick={handleDownloadPreview} className="tool-button flex items-center gap-2">
                 <Download size={20} />
                 Download Preview PNG
+              </button>
+              <button onClick={handleDownloadPreviewTIFF} className="tool-button flex items-center gap-2">
+                <Download size={20} />
+                Download Preview TIF
               </button>
               <button
                 onClick={async () => {
