@@ -26,6 +26,8 @@ import {
   barcodeOptions,
   dpiOptions,
   barcodeTypeToJsbarcode,
+  previewFontOptions,
+  getPreviewFontCss,
 } from '@/utils/zplGenerator';
 import { downloadFile, convertToBlackAndWhite, convertToGRF } from '@/utils/imageProcessing';
 import { Slider } from '@/components/ui/slider';
@@ -79,6 +81,7 @@ export const ZPLLabelCreator = () => {
   const [labelWidth, setLabelWidth] = useState(400);
   const [labelHeight, setLabelHeight] = useState(300);
   const [dpi, setDpi] = useState(203);
+  const [bgColor, setBgColor] = useState('#ffffff');
   const [elements, setElements] = useState<ZPLElement[]>([]);
   const [selectedElement, setSelectedElement] = useState<number | null>(null);
   const [zplCode, setZplCode] = useState('');
@@ -97,20 +100,24 @@ export const ZPLLabelCreator = () => {
         if (s.labelWidth) setLabelWidth(s.labelWidth);
         if (s.labelHeight) setLabelHeight(s.labelHeight);
         if (s.dpi) setDpi(s.dpi);
+        if (s.bgColor) setBgColor(s.bgColor);
         if (Array.isArray(s.elements)) setElements(s.elements);
       } catch {}
     }
   }, []);
   useEffect(() => {
-    localStorage.setItem('zit_zpl_state_v1', JSON.stringify({ labelWidth, labelHeight, dpi, elements }));
-  }, [labelWidth, labelHeight, dpi, elements]);
+    localStorage.setItem(
+      'zit_zpl_state_v1',
+      JSON.stringify({ labelWidth, labelHeight, dpi, bgColor, elements }),
+    );
+  }, [labelWidth, labelHeight, dpi, bgColor, elements]);
 
 
   const addElement = (type: ZPLElement['type']) => {
     let newElement: ZPLElement;
     switch (type) {
       case 'text':
-        newElement = { type: 'text', x: 50, y: 50, font: '0', fontSize: 30, content: 'Texto' };
+        newElement = { type: 'text', x: 50, y: 50, font: '0', fontSize: 30, content: 'Texto', previewFont: 'latin' };
         break;
       case 'barcode':
         newElement = {
@@ -207,7 +214,7 @@ export const ZPLLabelCreator = () => {
     const ctx = canvasRef.current.getContext('2d');
     if (!ctx) return;
 
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, labelWidth, labelHeight);
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
@@ -218,7 +225,7 @@ export const ZPLLabelCreator = () => {
       let bbox = { x: element.x, y: element.y, w: 20, h: 20 };
       switch (element.type) {
         case 'text': {
-          ctx.font = `${element.fontSize}px Arial`;
+          ctx.font = `${element.fontSize}px ${getPreviewFontCss(element.previewFont)}`;
           const metrics = ctx.measureText(element.content);
           ctx.fillText(element.content, element.x, element.y + element.fontSize);
           bbox = { x: element.x, y: element.y, w: metrics.width, h: element.fontSize + 4 };
@@ -295,7 +302,7 @@ export const ZPLLabelCreator = () => {
       ctx.fillRect(b.x + b.w - HANDLE / 2, b.y + b.h - HANDLE / 2, HANDLE, HANDLE);
       ctx.restore();
     }
-  }, [elements, labelWidth, labelHeight, selectedElement]);
+  }, [elements, labelWidth, labelHeight, selectedElement, bgColor]);
 
   useEffect(() => {
     drawPreview();
