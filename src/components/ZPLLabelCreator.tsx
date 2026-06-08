@@ -548,6 +548,24 @@ export const ZPLLabelCreator = () => {
             <button onClick={downloadPDF} className="tool-button flex items-center gap-2">
               <Download size={18} /> Salvar PDF
             </button>
+            <button
+              onClick={async () => {
+                if (!settings.printerEndpoint) {
+                  toast.error('Configure a URL do agente Zebra em Configurações.');
+                  return;
+                }
+                try {
+                  const zpl = generateZPL({ width: labelWidth, height: labelHeight, dpi, elements });
+                  await sendZPLToAgent(zpl, { endpoint: settings.printerEndpoint, printerName: settings.printerName });
+                  toast.success('Etiqueta enviada para a impressora Zebra.');
+                } catch (e: any) {
+                  toast.error(e?.message || 'Falha ao imprimir.');
+                }
+              }}
+              className="tool-button flex items-center gap-2"
+            >
+              <Printer size={18} /> Imprimir na Zebra
+            </button>
           </div>
         </div>
 
