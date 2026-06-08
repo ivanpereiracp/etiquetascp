@@ -151,7 +151,10 @@ export const RasterConverter = () => {
 
           <div className="flex flex-wrap gap-4 items-center">
             <button onClick={handleDownloadImage} className="download-button">
-              <Download size={20} /> Download Imagem PNG
+              <Download size={20} /> Download PNG
+            </button>
+            <button onClick={handleDownloadTIFF} className="tool-button flex items-center gap-2">
+              <Download size={20} /> Download TIF
             </button>
             <button onClick={handleDownloadRaw} className="tool-button flex items-center gap-2">
               <Download size={20} /> Download Dados RAW
