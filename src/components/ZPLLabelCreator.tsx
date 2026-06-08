@@ -556,7 +556,10 @@ export const ZPLLabelCreator = () => {
         {/* Preview */}
         <div className="glass-panel rounded-xl p-6">
           <h3 className="font-semibold mb-4">Preview da Etiqueta</h3>
-          <div className="bg-white rounded-lg p-4 flex items-center justify-center overflow-auto">
+          <div
+            className="rounded-lg p-4 flex items-center justify-center overflow-auto"
+            style={{ backgroundColor: bgColor }}
+          >
             <canvas
               ref={canvasRef}
               width={labelWidth}
