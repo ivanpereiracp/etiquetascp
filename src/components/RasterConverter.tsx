@@ -108,9 +108,8 @@ export const RasterConverter = () => {
                 onChange={(e) => onPhotometryChange(e.target.value as Photometry)}
                 className="w-full px-4 py-2 rounded-lg border border-border bg-white text-black font-medium focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="rgb" className="bg-white text-black">RGB</option>
                 <option value="rgb-palette" className="bg-white text-black">RGB Palette</option>
-                <option value="uncompressed" className="bg-white text-black">Uncompressed</option>
+                <option value="rgb" className="bg-white text-black">RGB</option>
               </select>
             </div>
 
