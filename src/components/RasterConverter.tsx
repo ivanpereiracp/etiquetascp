@@ -63,6 +63,9 @@ export const RasterConverter = () => {
   const handleDownloadImage = async () => {
     if (previewCanvasRef.current) await downloadCanvasAsImage(previewCanvasRef.current, `raster_${photometry}.png`);
   };
+  const handleDownloadTIFF = () => {
+    if (previewCanvasRef.current) downloadCanvasAsTIFF(previewCanvasRef.current, `raster_${photometry}.tif`);
+  };
   const handleDownloadRaw = () => {
     if (rawData) {
       const ab = new ArrayBuffer(rawData.length);
