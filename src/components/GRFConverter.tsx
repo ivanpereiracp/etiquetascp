@@ -300,6 +300,27 @@ export const GRFConverter = () => {
               </button>
               <button
                 onClick={async () => {
+                  if (!grfContent) return;
+                  if (!settings.printerEndpoint) {
+                    toast.error('Configure a URL do agente Zebra em Configurações.');
+                    return;
+                  }
+                  try {
+                    const safe = imageName.toUpperCase().replace(/[^A-Z0-9_]/g, '').slice(0, 8) || 'IMAGE';
+                    const zpl = wrapGRFForPrint(grfContent, safe);
+                    await sendZPLToAgent(zpl, { endpoint: settings.printerEndpoint, printerName: settings.printerName });
+                    toast.success('Etiqueta enviada para a impressora Zebra.');
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Falha ao imprimir.');
+                  }
+                }}
+                className="tool-button flex items-center gap-2"
+                title="Envia a imagem (não o texto GRF) para a Zebra, como o SAP faz"
+              >
+                <Printer size={20} /> Imprimir na Zebra
+              </button>
+              <button
+                onClick={async () => {
                   if (!sourceData) return;
                   await addGalleryItem({
                     id: `${Date.now()}`,
