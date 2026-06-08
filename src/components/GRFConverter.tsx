@@ -240,26 +240,42 @@ export const GRFConverter = () => {
               </div>
             </div>
 
-            <ZoomControl value={zoom} onChange={setZoom} label="Zoom preview" />
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <ZoomControl value={zoom} onChange={setZoom} label="Zoom preview" />
+                <button onClick={resetPan} className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                  <Move size={12} /> Reposicionar preview (arraste para mover)
+                </button>
+              </div>
+              <div>
+                <ZoomControl value={codeZoom} onChange={setCodeZoom} label="Zoom código" />
+              </div>
+            </div>
 
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <h4 className="text-sm text-muted-foreground mb-3">Preview Processado</h4>
-                <div className="bg-white rounded-lg p-4 flex items-center justify-center min-h-[200px] overflow-auto">
+                <div
+                  className="bg-white rounded-lg p-8 flex items-center justify-center min-h-[240px] overflow-hidden cursor-grab active:cursor-grabbing select-none"
+                  onMouseDown={onPreviewMouseDown}
+                  onMouseMove={onPreviewMouseMove}
+                  onMouseUp={endDrag}
+                  onMouseLeave={endDrag}
+                >
                   <canvas
                     ref={previewCanvasRef}
-                    style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}
-                    className="object-contain"
+                    style={{ transform: `translate(${panX}px, ${panY}px) scale(${zoom / 100})`, transformOrigin: 'center center' }}
+                    className="object-contain pointer-events-none"
                   />
                 </div>
               </div>
 
               <div>
                 <h4 className="text-sm text-muted-foreground mb-3">Código GRF</h4>
-                <div className="bg-muted rounded-lg p-4 h-[200px] overflow-auto">
-                  <pre className="text-xs font-mono text-foreground break-all whitespace-pre-wrap">
-                    {grfContent.substring(0, 500)}
-                    {grfContent.length > 500 && '...'}
+                <div className="bg-muted rounded-lg p-4 h-[240px] overflow-auto">
+                  <pre className="font-mono text-foreground break-all whitespace-pre-wrap" style={{ fontSize: `${(12 * codeZoom) / 100}px`, lineHeight: 1.4 }}>
+                    {grfContent.substring(0, 1500)}
+                    {grfContent.length > 1500 && '...'}
                   </pre>
                 </div>
               </div>
@@ -273,6 +289,10 @@ export const GRFConverter = () => {
               <button onClick={handleDownloadPreview} className="tool-button flex items-center gap-2">
                 <Download size={20} />
                 Download Preview PNG
+              </button>
+              <button onClick={handleDownloadPreviewTIFF} className="tool-button flex items-center gap-2">
+                <Download size={20} />
+                Download Preview TIF
               </button>
               <button
                 onClick={async () => {
