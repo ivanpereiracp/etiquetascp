@@ -75,6 +75,7 @@ const renderQRToCanvas = async (
 
 export const ZPLLabelCreator = () => {
   const { t } = useTranslation();
+  const { settings } = useSettings();
   const [labelWidth, setLabelWidth] = useState(400);
   const [labelHeight, setLabelHeight] = useState(300);
   const [dpi, setDpi] = useState(203);
