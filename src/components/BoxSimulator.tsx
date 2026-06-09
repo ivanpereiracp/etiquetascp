@@ -337,6 +337,64 @@ export const BoxSimulator = () => {
           </div>
         )}
 
+        {/* Container */}
+        {surface === 'container' && (
+          <div className="space-y-2 pt-2 border-t border-border/50">
+            <Label className="font-semibold">Container</Label>
+            <Select value={state.containerKind} onValueChange={(v) => {
+              const k = v as ContainerKind;
+              const p = CONTAINER_PRESETS[k];
+              setState((s) => ({ ...s, containerKind: k, containerL: p.L, containerW: p.W, containerH: p.H }));
+            }}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(CONTAINER_PRESETS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.name} — {v.L}×{v.W}×{v.H} mm</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {state.containerKind === 'custom' && (
+              <div className="grid grid-cols-3 gap-1">
+                <Input type="number" value={state.containerL} onChange={(e) => update('containerL', +e.target.value)} placeholder="C mm" />
+                <Input type="number" value={state.containerW} onChange={(e) => update('containerW', +e.target.value)} placeholder="L mm" />
+                <Input type="number" value={state.containerH} onChange={(e) => update('containerH', +e.target.value)} placeholder="A mm" />
+              </div>
+            )}
+
+            <Label className="font-semibold pt-2 block">Carga dentro</Label>
+            <Select value={state.cargoKind} onValueChange={(v) => update('cargoKind', v as CargoKind)}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CARGO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Label className="text-xs">Dimensões unidade (mm)</Label>
+            <div className="grid grid-cols-3 gap-1">
+              <Input type="number" value={state.cargoL} onChange={(e) => update('cargoL', +e.target.value)} placeholder="C" />
+              <Input type="number" value={state.cargoW} onChange={(e) => update('cargoW', +e.target.value)} placeholder="L" />
+              <Input type="number" value={state.cargoH} onChange={(e) => update('cargoH', +e.target.value)} placeholder="A" />
+            </div>
+
+            <Slide label={`Colunas (compr.): ${state.cargoCols}`} value={state.cargoCols} min={1} max={20} onChange={(v) => update('cargoCols', v)} />
+            <Slide label={`Fileiras (larg.): ${state.cargoRows}`} value={state.cargoRows} min={1} max={6} onChange={(v) => update('cargoRows', v)} />
+            <Slide label={`Camadas (alt.): ${state.cargoLayers}`} value={state.cargoLayers} min={1} max={6} onChange={(v) => update('cargoLayers', v)} />
+
+            <Button size="sm" variant="outline" className="w-full" onClick={() => {
+              const fitL = Math.floor(state.containerL / state.cargoL);
+              const fitW = Math.floor(state.containerW / state.cargoW);
+              const fitH = Math.floor(state.containerH / state.cargoH);
+              setState((s) => ({ ...s, cargoCols: fitL, cargoRows: fitW, cargoLayers: fitH }));
+              toast.success(`Ajuste automático: ${fitL}×${fitW}×${fitH} = ${fitL*fitW*fitH} unidades`);
+            }}>Auto-ajustar ao container</Button>
+
+            <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+              <div>Total: <b>{state.cargoCols * state.cargoRows * state.cargoLayers}</b> unidades</div>
+              <div>Volume ocupado: {((state.cargoCols * state.cargoRows * state.cargoLayers * state.cargoL * state.cargoW * state.cargoH) / (state.containerL * state.containerW * state.containerH) * 100).toFixed(1)}%</div>
+            </div>
+          </div>
+        )}
+
         <Button variant="outline" className="w-full" onClick={exportPNG}>
           <Download size={14} className="mr-1" /> Exportar PNG
         </Button>
