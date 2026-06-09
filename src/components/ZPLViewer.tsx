@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Eye, Download, Upload, ExternalLink, Printer, Save, Loader2 } from 'lucide-react';
+import { Eye, Download, Upload, ExternalLink, Printer, Save, Loader2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
