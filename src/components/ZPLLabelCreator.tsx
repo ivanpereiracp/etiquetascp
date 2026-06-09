@@ -486,15 +486,40 @@ export const ZPLLabelCreator = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="glass-panel rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
           <Tag className="text-primary" size={24} />
           <h2 className="text-xl font-semibold">Criador de Etiquetas ZPL</h2>
+          <div className="ml-auto flex items-center gap-2 flex-wrap">
+            <select
+              onChange={(e) => {
+                const s = sizes.find((x) => x.id === e.target.value);
+                if (s) handlePickSize(s);
+                e.target.value = '';
+              }}
+              defaultValue=""
+              className="px-3 py-2 rounded-lg border border-border bg-white text-black text-sm"
+              title="Aplicar tamanho predefinido"
+            >
+              <option value="" className="bg-white text-black">Tamanhos…</option>
+              {sizes.map((s) => (
+                <option key={s.id} value={s.id} className="bg-white text-black">
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <PresetManager
+              current={{ widthDots: labelWidth, heightDots: labelHeight, dpi, bgColor, elements }}
+              onLoadPreset={handleLoadPreset}
+              onPickSize={handlePickSize}
+            />
+          </div>
         </div>
 
         <p className="text-muted-foreground text-sm mb-6">
           Arraste elementos no preview, use as setas do teclado (Shift = 10px) para ajuste fino.
-          Delete remove o elemento selecionado.
+          Delete remove o elemento selecionado. Elementos têm fundo transparente para combinar com qualquer cor de etiqueta.
         </p>
+
 
         {/* Label Settings */}
         <div className="grid md:grid-cols-3 gap-4 mb-6">
