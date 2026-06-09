@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { renderLabelaryPNG } from '@/utils/labelary';
 
-type Surface = 'box' | 'bigbag' | 'drum' | 'bombona' | 'pallet';
+type Surface = 'box' | 'bigbag' | 'drum' | 'bombona' | 'pallet' | 'container';
+type ContainerKind = '20ft' | '40ft' | '40hc' | 'reefer20' | 'reefer40' | 'custom';
+type CargoKind = 'pallet' | 'box' | 'bigbag' | 'drum' | 'bombona';
 type FaceName = 'front' | 'back' | 'left' | 'right' | 'top';
 
 interface BoxState {
