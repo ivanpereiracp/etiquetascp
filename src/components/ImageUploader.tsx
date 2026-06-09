@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { Upload, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Link as LinkIcon, ZoomIn } from 'lucide-react';
 import UTIF from 'utif';
+import { toast } from 'sonner';
 
 interface ImageUploaderProps {
   onImageLoad: (imageData: ImageData, canvas: HTMLCanvasElement) => void;
@@ -10,6 +11,8 @@ interface ImageUploaderProps {
 export const ImageUploader = ({ onImageLoad, label = "Arraste uma imagem ou clique para selecionar" }: ImageUploaderProps) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [url, setUrl] = useState('');
+  const [lastCanvas, setLastCanvas] = useState<HTMLCanvasElement | null>(null);
 
   const emitFromCanvas = useCallback((canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d');
