@@ -103,6 +103,24 @@ const SURFACE_OPTIONS: { value: Surface; label: string }[] = [
   { value: 'drum', label: 'Tambor' },
   { value: 'bombona', label: 'Bombona (extrato café)' },
   { value: 'pallet', label: 'Paletização' },
+  { value: 'container', label: 'Container (estiva)' },
+];
+
+const CONTAINER_PRESETS: Record<ContainerKind, { name: string; L: number; W: number; H: number }> = {
+  '20ft':    { name: "20' Dry",        L: 5898,  W: 2352, H: 2393 },
+  '40ft':    { name: "40' Dry",        L: 12032, W: 2352, H: 2393 },
+  '40hc':    { name: "40' High Cube",  L: 12032, W: 2352, H: 2698 },
+  'reefer20':{ name: "20' Reefer",     L: 5485,  W: 2286, H: 2265 },
+  'reefer40':{ name: "40' Reefer",     L: 11588, W: 2286, H: 2249 },
+  'custom':  { name: 'Customizado',    L: 6000,  W: 2400, H: 2400 },
+};
+
+const CARGO_OPTIONS: { value: CargoKind; label: string }[] = [
+  { value: 'pallet', label: 'Pallet (caixa)' },
+  { value: 'box', label: 'Caixa' },
+  { value: 'bigbag', label: 'Big bag' },
+  { value: 'drum', label: 'Tambor' },
+  { value: 'bombona', label: 'Bombona' },
 ];
 
 const FACE_OPTIONS: { value: FaceName; label: string }[] = [
