@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { renderLabelaryPNG } from '@/utils/labelary';
 
-type Surface = 'box' | 'bigbag' | 'drum' | 'bombona' | 'pallet';
+type Surface = 'box' | 'bigbag' | 'drum' | 'bombona' | 'pallet' | 'container';
+type ContainerKind = '20ft' | '40ft' | '40hc' | 'reefer20' | 'reefer40' | 'custom';
+type CargoKind = 'pallet' | 'box' | 'bigbag' | 'drum' | 'bombona';
 type FaceName = 'front' | 'back' | 'left' | 'right' | 'top';
 
 interface BoxState {
@@ -42,6 +44,18 @@ interface BoxState {
   palletRows: number;
   palletCols: number;
   palletLayers: number;
+  // Container
+  containerKind: ContainerKind;
+  containerL: number;  // mm
+  containerW: number;
+  containerH: number;
+  cargoKind: CargoKind;
+  cargoL: number;      // mm
+  cargoW: number;
+  cargoH: number;
+  cargoRows: number;
+  cargoCols: number;
+  cargoLayers: number;
 }
 
 const STORAGE_KEY = 'zit_box_sim_v2';
@@ -76,6 +90,11 @@ const DEFAULT: BoxState = {
   palletRows: 2,
   palletCols: 2,
   palletLayers: 3,
+  containerKind: '40ft',
+  containerL: 12032, containerW: 2352, containerH: 2393,
+  cargoKind: 'pallet',
+  cargoL: 1200, cargoW: 1000, cargoH: 1500,
+  cargoRows: 2, cargoCols: 10, cargoLayers: 1,
 };
 
 const SURFACE_OPTIONS: { value: Surface; label: string }[] = [
@@ -84,6 +103,24 @@ const SURFACE_OPTIONS: { value: Surface; label: string }[] = [
   { value: 'drum', label: 'Tambor' },
   { value: 'bombona', label: 'Bombona (extrato café)' },
   { value: 'pallet', label: 'Paletização' },
+  { value: 'container', label: 'Container (estiva)' },
+];
+
+const CONTAINER_PRESETS: Record<ContainerKind, { name: string; L: number; W: number; H: number }> = {
+  '20ft':    { name: "20' Dry",        L: 5898,  W: 2352, H: 2393 },
+  '40ft':    { name: "40' Dry",        L: 12032, W: 2352, H: 2393 },
+  '40hc':    { name: "40' High Cube",  L: 12032, W: 2352, H: 2698 },
+  'reefer20':{ name: "20' Reefer",     L: 5485,  W: 2286, H: 2265 },
+  'reefer40':{ name: "40' Reefer",     L: 11588, W: 2286, H: 2249 },
+  'custom':  { name: 'Customizado',    L: 6000,  W: 2400, H: 2400 },
+};
+
+const CARGO_OPTIONS: { value: CargoKind; label: string }[] = [
+  { value: 'pallet', label: 'Pallet (caixa)' },
+  { value: 'box', label: 'Caixa' },
+  { value: 'bigbag', label: 'Big bag' },
+  { value: 'drum', label: 'Tambor' },
+  { value: 'bombona', label: 'Bombona' },
 ];
 
 const FACE_OPTIONS: { value: FaceName; label: string }[] = [
@@ -300,6 +337,64 @@ export const BoxSimulator = () => {
           </div>
         )}
 
+        {/* Container */}
+        {surface === 'container' && (
+          <div className="space-y-2 pt-2 border-t border-border/50">
+            <Label className="font-semibold">Container</Label>
+            <Select value={state.containerKind} onValueChange={(v) => {
+              const k = v as ContainerKind;
+              const p = CONTAINER_PRESETS[k];
+              setState((s) => ({ ...s, containerKind: k, containerL: p.L, containerW: p.W, containerH: p.H }));
+            }}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(CONTAINER_PRESETS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v.name} — {v.L}×{v.W}×{v.H} mm</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {state.containerKind === 'custom' && (
+              <div className="grid grid-cols-3 gap-1">
+                <Input type="number" value={state.containerL} onChange={(e) => update('containerL', +e.target.value)} placeholder="C mm" />
+                <Input type="number" value={state.containerW} onChange={(e) => update('containerW', +e.target.value)} placeholder="L mm" />
+                <Input type="number" value={state.containerH} onChange={(e) => update('containerH', +e.target.value)} placeholder="A mm" />
+              </div>
+            )}
+
+            <Label className="font-semibold pt-2 block">Carga dentro</Label>
+            <Select value={state.cargoKind} onValueChange={(v) => update('cargoKind', v as CargoKind)}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {CARGO_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Label className="text-xs">Dimensões unidade (mm)</Label>
+            <div className="grid grid-cols-3 gap-1">
+              <Input type="number" value={state.cargoL} onChange={(e) => update('cargoL', +e.target.value)} placeholder="C" />
+              <Input type="number" value={state.cargoW} onChange={(e) => update('cargoW', +e.target.value)} placeholder="L" />
+              <Input type="number" value={state.cargoH} onChange={(e) => update('cargoH', +e.target.value)} placeholder="A" />
+            </div>
+
+            <Slide label={`Colunas (compr.): ${state.cargoCols}`} value={state.cargoCols} min={1} max={20} onChange={(v) => update('cargoCols', v)} />
+            <Slide label={`Fileiras (larg.): ${state.cargoRows}`} value={state.cargoRows} min={1} max={6} onChange={(v) => update('cargoRows', v)} />
+            <Slide label={`Camadas (alt.): ${state.cargoLayers}`} value={state.cargoLayers} min={1} max={6} onChange={(v) => update('cargoLayers', v)} />
+
+            <Button size="sm" variant="outline" className="w-full" onClick={() => {
+              const fitL = Math.floor(state.containerL / state.cargoL);
+              const fitW = Math.floor(state.containerW / state.cargoW);
+              const fitH = Math.floor(state.containerH / state.cargoH);
+              setState((s) => ({ ...s, cargoCols: fitL, cargoRows: fitW, cargoLayers: fitH }));
+              toast.success(`Ajuste automático: ${fitL}×${fitW}×${fitH} = ${fitL*fitW*fitH} unidades`);
+            }}>Auto-ajustar ao container</Button>
+
+            <div className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+              <div>Total: <b>{state.cargoCols * state.cargoRows * state.cargoLayers}</b> unidades</div>
+              <div>Volume ocupado: {((state.cargoCols * state.cargoRows * state.cargoLayers * state.cargoL * state.cargoW * state.cargoH) / (state.containerL * state.containerW * state.containerH) * 100).toFixed(1)}%</div>
+            </div>
+          </div>
+        )}
+
         <Button variant="outline" className="w-full" onClick={exportPNG}>
           <Download size={14} className="mr-1" /> Exportar PNG
         </Button>
@@ -316,6 +411,7 @@ export const BoxSimulator = () => {
           {surface === 'drum' && <DrumScene s={state} kind="drum" />}
           {surface === 'bombona' && <DrumScene s={state} kind="bombona" />}
           {surface === 'pallet' && <PalletScene s={state} />}
+          {surface === 'container' && <ContainerScene s={state} />}
         </div>
       </div>
     </div>
@@ -505,6 +601,94 @@ const MiniBox: React.FC<{ size: number; background: string; shadeAmt: number; la
       <Face style={{ width: size, height: size, transform: `translateX(-${half}px) rotateY(-90deg)`, background }} shade={shadeAmt * 0.5} />
       <Face style={{ width: size, height: size, transform: `translateY(-${half}px) rotateX(90deg)`, background }} shade={shadeAmt * 0.1} />
       <Face style={{ width: size, height: size, transform: `translateY(${half}px) rotateX(-90deg)`, background }} shade={shadeAmt * 0.8} />
+    </div>
+  );
+};
+
+const ContainerScene: React.FC<{ s: BoxState }> = ({ s }) => {
+  const { containerL, containerW, containerH, cargoL, cargoW, cargoH, cargoRows, cargoCols, cargoLayers, rotX, rotY, boxColor, drumColor, cargoKind, lighting } = s;
+
+  // Escala mm → px para caber bem na tela
+  const maxPx = 520;
+  const scale = Math.min(maxPx / containerL, 280 / containerW, 220 / containerH);
+  const cL = containerL * scale;
+  const cW = containerW * scale;
+  const cH = containerH * scale;
+  const uL = cargoL * scale;
+  const uW = cargoW * scale;
+  const uH = cargoH * scale;
+
+  const cardboard = `repeating-linear-gradient(45deg, ${boxColor} 0 4px, ${shade(boxColor, -10)} 4px 8px)`;
+  const isRound = cargoKind === 'drum' || cargoKind === 'bombona';
+  const isBag = cargoKind === 'bigbag';
+
+  const units: React.ReactNode[] = [];
+  for (let l = 0; l < cargoLayers; l++) {
+    for (let r = 0; r < cargoRows; r++) {
+      for (let c = 0; c < cargoCols; c++) {
+        const tx = c * uL - cL / 2 + uL / 2;
+        const ty = -l * uH - uH / 2;
+        const tz = r * uW - cW / 2 + uW / 2;
+        units.push(
+          <div key={`${l}-${r}-${c}`} style={{
+            position: 'absolute', left: '50%', top: '50%',
+            width: uL, height: uH, marginLeft: -uL / 2, marginTop: -uH / 2,
+            transformStyle: 'preserve-3d',
+            transform: `translate3d(${tx}px,${ty}px,${tz}px)`,
+          }}>
+            {isRound ? (
+              <div style={{
+                width: uL, height: uH,
+                background: `radial-gradient(ellipse at 30% 30%, ${shade(drumColor, 30)}, ${drumColor} 50%, ${shade(drumColor, -40)})`,
+                borderRadius: '50% / 8%',
+                border: `1px solid ${shade(drumColor, -40)}`,
+              }} />
+            ) : isBag ? (
+              <div style={{
+                width: uL, height: uH,
+                background: `linear-gradient(135deg, ${shade(boxColor, 20)}, ${boxColor}, ${shade(boxColor, -25)})`,
+                borderRadius: '12px 12px 4px 4px',
+                border: `1px solid ${shade(boxColor, -30)}`,
+              }} />
+            ) : (
+              <div style={{ width: uL, height: uH, background: cardboard, border: '1px solid rgba(0,0,0,0.3)', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)' }} />
+            )}
+          </div>
+        );
+      }
+    }
+  }
+
+  // Faces do container (metálico, frente aberta)
+  const metal = 'linear-gradient(180deg, #b8c2c8 0%, #6a7378 60%, #4a5256 100%)';
+  const ribbed = 'repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 18px)';
+
+  return (
+    <div style={{ transformStyle: 'preserve-3d', transform: `rotateX(${rotX}deg) rotateY(${rotY}deg)`, width: cL, height: cH }}>
+      <div style={{ position: 'relative', width: cL, height: 1, transformStyle: 'preserve-3d' }}>
+        {/* piso */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cL, height: cW, marginLeft: -cL/2, marginTop: -cW/2,
+          background: '#3a3026', transform: `translateY(0px) rotateX(90deg)` }} />
+        {/* teto (semi-transparente) */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cL, height: cW, marginLeft: -cL/2, marginTop: -cW/2,
+          background: metal, opacity: 0.25, transform: `translateY(-${cH}px) rotateX(90deg)` }} />
+        {/* fundo (traseira) */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cL, height: cH, marginLeft: -cL/2, marginTop: -cH,
+          background: `${ribbed}, ${metal}`, transform: `translateZ(-${cW/2}px)` }} />
+        {/* lateral esquerda */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cW, height: cH, marginLeft: -cW/2, marginTop: -cH,
+          background: `${ribbed}, ${metal}`, opacity: 0.85,
+          transform: `translateX(-${cL/2}px) rotateY(90deg)` }} />
+        {/* lateral direita */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cW, height: cH, marginLeft: -cW/2, marginTop: -cH,
+          background: `${ribbed}, ${metal}`, opacity: 0.6,
+          transform: `translateX(${cL/2}px) rotateY(-90deg)` }} />
+        {/* cargas */}
+        {units}
+        {/* sombreamento global */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cL, height: cH, marginLeft: -cL/2, marginTop: -cH,
+          background: `rgba(0,0,0,${lighting/200})`, pointerEvents: 'none', transform: `translateZ(${cW/2 - 0.5}px)` }} />
+      </div>
     </div>
   );
 };

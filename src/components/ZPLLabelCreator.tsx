@@ -13,6 +13,7 @@ import {
   FileImage,
   Image as ImageIcon,
   Printer,
+  Copy,
 } from 'lucide-react';
 import { sendZPLToAgent } from '@/utils/zebraPrint';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -32,6 +33,8 @@ import {
 import { downloadFile, convertToBlackAndWhite, convertToGRF } from '@/utils/imageProcessing';
 import { Slider } from '@/components/ui/slider';
 import { DOTS_PER_MM } from '@/utils/units';
+import { PresetManager } from '@/components/PresetManager';
+import { loadSizes, mmToDots, type LabelSize, type LabelPreset } from '@/utils/labelPresets';
 
 type Drag = { index: number; offsetX: number; offsetY: number } | null;
 type ResizeDrag = { index: number; startW: number; startH: number; startX: number; startY: number } | null;
@@ -52,6 +55,7 @@ const renderBarcodeToCanvas = (
       margin: 0,
       width: el.moduleWidth ?? 2,
       fontSize: 14,
+      background: 'transparent',
     });
     return c;
   } catch {
@@ -68,6 +72,7 @@ const renderQRToCanvas = async (
       width: el.size * 20,
       margin: 0,
       errorCorrectionLevel: el.errorCorrection ?? 'M',
+      color: { dark: '#000000ff', light: '#00000000' },
     });
     return c;
   } catch {
@@ -429,12 +434,12 @@ export const ZPLLabelCreator = () => {
     const ratio = maxW / img.naturalWidth;
     const w = Math.max(20, maxW);
     const h = Math.max(20, Math.round(img.naturalHeight * ratio));
-    // Build GRF inline so the exported ZPL contains a printable raster
+    // Build GRF inline so the exported ZPL contains a printable raster.
+    // NOTE: Não preenchemos com branco — elementos têm fundo transparente para combinar com qualquer cor de etiqueta.
     const tmp = document.createElement('canvas');
     tmp.width = w; tmp.height = h;
     const tctx = tmp.getContext('2d')!;
-    tctx.fillStyle = '#fff';
-    tctx.fillRect(0, 0, w, h);
+    tctx.clearRect(0, 0, w, h);
     tctx.drawImage(img, 0, 0, w, h);
     const idata = tctx.getImageData(0, 0, w, h);
     const bw = convertToBlackAndWhite(idata, 128);
@@ -450,18 +455,71 @@ export const ZPLLabelCreator = () => {
     });
   };
 
+  const handleLoadPreset = (p: LabelPreset) => {
+    setLabelWidth(p.widthDots);
+    setLabelHeight(p.heightDots);
+    setDpi(p.dpi);
+    setBgColor(p.bgColor);
+    setElements(p.elements);
+    setSelectedElement(null);
+  };
+
+  const handlePickSize = (s: LabelSize) => {
+    setLabelWidth(mmToDots(s.widthMm, dpi));
+    setLabelHeight(mmToDots(s.heightMm, dpi));
+    toast.success(`Tamanho aplicado: ${s.name}`);
+  };
+
+  const copyZPL = async () => {
+    const code = generateZPL({ width: labelWidth, height: labelHeight, dpi, elements });
+    setZplCode(code);
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success('Código ZPL copiado!');
+    } catch {
+      toast.error('Não foi possível copiar.');
+    }
+  };
+
+  const sizes = loadSizes();
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="glass-panel rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-4 flex-wrap">
           <Tag className="text-primary" size={24} />
           <h2 className="text-xl font-semibold">Criador de Etiquetas ZPL</h2>
+          <div className="ml-auto flex items-center gap-2 flex-wrap">
+            <select
+              onChange={(e) => {
+                const s = sizes.find((x) => x.id === e.target.value);
+                if (s) handlePickSize(s);
+                e.target.value = '';
+              }}
+              defaultValue=""
+              className="px-3 py-2 rounded-lg border border-border bg-white text-black text-sm"
+              title="Aplicar tamanho predefinido"
+            >
+              <option value="" className="bg-white text-black">Tamanhos…</option>
+              {sizes.map((s) => (
+                <option key={s.id} value={s.id} className="bg-white text-black">
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <PresetManager
+              current={{ widthDots: labelWidth, heightDots: labelHeight, dpi, bgColor, elements }}
+              onLoadPreset={handleLoadPreset}
+              onPickSize={handlePickSize}
+            />
+          </div>
         </div>
 
         <p className="text-muted-foreground text-sm mb-6">
           Arraste elementos no preview, use as setas do teclado (Shift = 10px) para ajuste fino.
-          Delete remove o elemento selecionado.
+          Delete remove o elemento selecionado. Elementos têm fundo transparente para combinar com qualquer cor de etiqueta.
         </p>
+
 
         {/* Label Settings */}
         <div className="grid md:grid-cols-3 gap-4 mb-6">
@@ -893,11 +951,14 @@ export const ZPLLabelCreator = () => {
 
       {/* ZPL Code Preview */}
       <div className="glass-panel rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h3 className="font-semibold">Código ZPL</h3>
-          <button onClick={generateCode} className="tool-button">
-            Gerar Código
-          </button>
+          <div className="flex gap-2">
+            <button onClick={generateCode} className="tool-button">Gerar Código</button>
+            <button onClick={copyZPL} className="tool-button flex items-center gap-2">
+              <Copy size={16} /> Copiar ZPL
+            </button>
+          </div>
         </div>
         <pre className="bg-muted rounded-lg p-4 overflow-auto max-h-64 font-mono text-sm">
           {zplCode || generateZPL({ width: labelWidth, height: labelHeight, dpi, elements })}

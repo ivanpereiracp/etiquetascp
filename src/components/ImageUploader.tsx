@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { Upload, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, Image as ImageIcon, X, Link as LinkIcon, ZoomIn } from 'lucide-react';
 import UTIF from 'utif';
+import { toast } from 'sonner';
 
 interface ImageUploaderProps {
   onImageLoad: (imageData: ImageData, canvas: HTMLCanvasElement) => void;
@@ -10,14 +11,51 @@ interface ImageUploaderProps {
 export const ImageUploader = ({ onImageLoad, label = "Arraste uma imagem ou clique para selecionar" }: ImageUploaderProps) => {
   const [preview, setPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [url, setUrl] = useState('');
+  const [lastCanvas, setLastCanvas] = useState<HTMLCanvasElement | null>(null);
 
   const emitFromCanvas = useCallback((canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     setPreview(canvas.toDataURL('image/png'));
+    setLastCanvas(canvas);
     onImageLoad(imageData, canvas);
   }, [onImageLoad]);
+
+  const loadFromUrl = useCallback(async () => {
+    if (!url.trim()) return;
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error('Não foi possível carregar a imagem da URL.'));
+        img.src = url.trim();
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d')!.drawImage(img, 0, 0);
+      emitFromCanvas(canvas);
+      toast.success(`Imagem carregada (${img.naturalWidth}×${img.naturalHeight}px).`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao carregar URL.');
+    }
+  }, [url, emitFromCanvas]);
+
+  const upscale2x = useCallback(() => {
+    if (!lastCanvas) return;
+    const c = document.createElement('canvas');
+    c.width = lastCanvas.width * 2;
+    c.height = lastCanvas.height * 2;
+    const ctx = c.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(lastCanvas, 0, 0, c.width, c.height);
+    emitFromCanvas(c);
+    toast.success(`Upscaled para ${c.width}×${c.height}px.`);
+  }, [lastCanvas, emitFromCanvas]);
 
   const processTiff = useCallback((file: File) => {
     const reader = new FileReader();
@@ -89,27 +127,32 @@ export const ImageUploader = ({ onImageLoad, label = "Arraste uma imagem ou cliq
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-3">
       {preview ? (
         <div className="relative group">
           <div className="glass-panel rounded-lg p-4 glow-border">
-            <img 
-              src={preview} 
-              alt="Preview" 
+            <img
+              src={preview}
+              alt="Preview"
               className="max-w-full max-h-64 mx-auto rounded object-contain"
             />
-            <button
-              onClick={clearImage}
-              className="absolute top-2 right-2 p-2 bg-destructive text-destructive-foreground 
-                         rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <X size={16} />
-            </button>
+            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={upscale2x}
+                className="p-2 bg-primary text-primary-foreground rounded-full"
+                title="Aumentar resolução 2×"
+              >
+                <ZoomIn size={16} />
+              </button>
+              <button onClick={clearImage} className="p-2 bg-destructive text-destructive-foreground rounded-full">
+                <X size={16} />
+              </button>
+            </div>
           </div>
         </div>
       ) : (
         <label
-          className={`upload-zone flex flex-col items-center justify-center p-8 
+          className={`upload-zone flex flex-col items-center justify-center p-8
                       ${isDragging ? 'border-primary bg-primary/10' : ''}`}
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
@@ -132,6 +175,19 @@ export const ImageUploader = ({ onImageLoad, label = "Arraste uma imagem ou cliq
           </div>
         </label>
       )}
+
+      <div className="flex gap-2 items-center">
+        <LinkIcon size={16} className="text-muted-foreground shrink-0" />
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); loadFromUrl(); } }}
+          placeholder="Colar URL da imagem (https://…) para alta resolução"
+          className="flex-1 px-3 py-2 rounded-lg bg-input border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        <button onClick={loadFromUrl} className="tool-button text-sm">Carregar URL</button>
+      </div>
     </div>
   );
 };

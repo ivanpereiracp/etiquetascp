@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Eye, Download, Upload, ExternalLink, Printer, Save, Loader2 } from 'lucide-react';
+import { Eye, Download, Upload, ExternalLink, Printer, Save, Loader2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -107,13 +107,19 @@ export const ZPLViewer = () => {
         <div className="space-y-4 bg-card border border-border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">{t('viewer.code')}</h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <input ref={fileRef} type="file" accept=".zpl,.txt" hidden onChange={handleImport} />
               <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
                 <Upload size={14} /> {t('viewer.import')}
               </Button>
               <Button size="sm" variant="outline" onClick={handleExport}>
                 <Download size={14} /> {t('viewer.export')}
+              </Button>
+              <Button size="sm" variant="outline" onClick={async () => {
+                try { await navigator.clipboard.writeText(zpl); toast({ title: 'ZPL copiado!' }); }
+                catch { toast({ title: 'Falha ao copiar', variant: 'destructive' }); }
+              }}>
+                <Copy size={14} /> Copiar
               </Button>
             </div>
           </div>
