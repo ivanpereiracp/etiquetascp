@@ -1,94 +1,73 @@
-# Plano de Implementação — Melhorias Zebra Image Tools
+# Fase E — Presets, tamanhos, ZPL e container
 
-Escopo grande (7 módulos, ~25 funcionalidades). Para preservar tudo que já funciona (GRF, B&W, Raster, ZPL básico), proponho entregar em **6 fases incrementais**, cada uma testável isoladamente. Aprovação por fase recomendada.
+Vou dividir em 6 entregas dentro desta fase, todas exportáveis/importáveis via arquivo JSON para mover entre PCs.
 
----
+## 1. Presets de etiqueta (configurações salvas)
+- Novo módulo `src/utils/labelPresets.ts` com tipos `LabelPreset` (nome, tamanho, ZPL, cor de fundo, elementos, data).
+- Botões **Salvar preset**, **Carregar preset**, **Exportar (.json)**, **Importar (.json)** no `ZPLLabelCreator`.
+- Armazenamento local em `localStorage` (`zit_label_presets_v1`) + arquivo `.zitlabel.json` para portar entre PCs.
+- Lista lateral/modal com presets salvos, renomear e excluir.
 
-## Fase 1 — Fundação (UI/UX, Tema, i18n)
-**Módulo 1 completo**
-- Painel de Configurações (`/settings` ou drawer lateral) com:
-  - Cores primary/secondary (HSL) gravadas em `localStorage`, aplicadas via CSS vars em `index.css`
-  - Seleção de fonte (Inter, Roboto, Poppins, JetBrains Mono)
-  - Upload de logo do header e edição de título/subtítulo (branding white-label)
-  - Cor de fundo da área de edição da etiqueta (preview background) — toggle claro/escuro/customizado
-- i18n via `react-i18next` com PT, EN, ES (textos da UI extraídos para JSON)
-- Seletor de idioma no header
+## 2. Tamanhos de etiqueta com presets
+- Tamanhos padrão de fábrica: 100×150 mm, 100×201 mm (o mais usado), 50×30 mm, 100×50 mm, 80×40 mm.
+- Seletor no topo do `ZPLLabelCreator` com dropdown de tamanhos + opção "Personalizado".
+- Modal para criar novo tamanho (nome, largura, altura, unidade mm/in) → salvo em `localStorage` (`zit_label_sizes_v1`).
+- Exportar/importar lista de tamanhos via JSON, junto do mesmo fluxo da seção 1.
 
-## Fase 2 — Manipulação de Imagens e GRF
-**Módulo 2 + parte do 3**
-- **Galeria local** com IndexedDB (`idb` lib) — upload múltiplo, listar/excluir/reutilizar imagens
-- **Rotação GRF** (0/90/180/270°) aplicada antes da conversão — o buffer rotacionado alimenta `convertToGRF` mantendo a correção anti-duplicação
-- **Zoom independente** (preview e original) com slider 25–400% + botões +/−
-- **Editor de imagem básico**: adicionar texto sobreposto, ajustar altura/largura de elementos (canvas-based, salva nova ImageData)
-- Inputs de dimensão com unidade pixels/cm/mm (conversão @203 DPI)
+> Observação: você escreveu "201 cm × 100 cm" — assumindo que é **mm** (etiqueta industrial Zebra 100×201 mm). Se for outro valor me avise.
 
-## Fase 3 — Editor ZPL Avançado
-**Módulo 3 (resto) + Módulo 4**
-- Refatorar `ZPLLabelCreator` para canvas drag-and-drop:
-  - Selecionar elemento (texto/caixa/linha/código de barras) → handles de redimensionar
-  - Setas do teclado movem elemento selecionado em 1px (Shift = 10px)
-  - Inputs numéricos de X/Y/W/H sincronizados
-- Corrigir geração de código de barras: revisar comandos `^BC` (Code128), `^BE` (EAN-13), `^BQ` (QR), com flag de human-readable centralizado
-- Renderização visual dos códigos de barras no preview usando `jsbarcode` + `qrcode`
-- Nova aba **"Códigos de Barras"** standalone para geração avulsa (download PNG/SVG/ZPL)
+## 3. Fundo transparente para elementos ZPL
+- Em `ZPLViewer` / `ZPLLabelCreator`, garantir que todos os elementos (texto, código de barras, imagens, formas) sejam renderizados com `background: transparent` e sem preenchimento branco.
+- Ajustar o gerador (`zplGenerator.ts`) para nunca emitir `^FR` invertido em fundo escuro a menos que solicitado.
+- Cor de fundo da etiqueta continua configurável e os elementos passam a respeitar qualquer cor.
 
-## Fase 4 — Viewer ZPL + Labelary + I/O
-**Módulo 5 + Módulo 6**
-- Nova aba **"ZPL Viewer"**: textarea + botão "Gerar" → chama API pública Labelary (`api.labelary.com/v1/printers/8dpmm/labels/...`) e exibe imagem
-- Botão "Abrir no Labelary.com" com ZPL pré-carregado via URL
-- Rotação da pré-visualização (0/90/180/270)
-- Importar arquivo `.zpl` (input file → textarea) e exportar (já existe, validar)
-- Impressão:
-  - **Convencional**: `window.print()` com CSS print + PDF (já temos)
-  - **Zebra direta**: tentativa via WebUSB (`navigator.usb`) para impressoras conectadas USB; fallback baixa `.zpl` para envio manual
-- **Histórico local** (IndexedDB): toda etiqueta gerada → registro com timestamp, thumb, ZPL; aba "Histórico" lista e permite restaurar
+## 4. Botão "Copiar ZPL"
+- Botão visível no `ZPLLabelCreator` e no `ZPLViewer` que usa `navigator.clipboard.writeText` com toast de confirmação.
 
-## Fase 5 — Mockup 3D
-**Módulo 7 parte A**
-- Nova aba **"Mockup"** com `react-three-fiber`: caixa de papelão 3D, textura da etiqueta aplicada numa face, rotação orbital, ajuste de posição da etiqueta
+## 5. Melhor resolução de imagens
+- No `ImageUploader` / `GRFConverter`: novo campo **URL da imagem** além do upload.
+- Pipeline de alta resolução: carregar em tamanho original, aplicar `OffscreenCanvas` quando disponível, opção de upscale 2× via algoritmo bicúbico antes de converter para GRF/ZPL.
+- Slider de qualidade/DPI no momento da inserção na etiqueta.
 
-## Fase 6 — OCR + Tradução
-**Módulo 7 parte B**
-- OCR com `tesseract.js` (PT/EN/ES/multi)
-- Tradução via Lovable AI Gateway (Gemini) — requer ativar Lovable Cloud
-- Fluxo: upload imagem → extrai texto → mostra resultado → botão "Traduzir para [idioma]"
+## 6. Simulação de container
+- Novo modo `container` no `BoxSimulator` (ou aba dedicada).
+- Containers padrão: **20 ft Dry**, **40 ft Dry**, **40 ft HC**, **Reefer 20/40**, custom (LxAxC em mm).
+- Disposição automática + manual de pallets/caixas/big bags/tambores/bombonas dentro do container 3D (CSS 3D + grid de slots).
+- Indicadores: nº de unidades, % de ocupação volumétrica, peso estimado (opcional).
+- Exportar/importar layout do container via JSON.
 
----
+## Detalhes técnicos
 
-## Detalhes Técnicos
-
-**Novas dependências previstas:**
-- `react-i18next` `i18next`
-- `idb` (IndexedDB wrapper)
-- `jsbarcode` `qrcode`
-- `tesseract.js`
-- `three` `@react-three/fiber` `@react-three/drei`
-- `react-rnd` ou `interactjs` (drag/resize no editor ZPL)
-
-**Garantias de não-regressão:**
-- Nenhum arquivo de `utils/imageProcessing.ts` `convertToGRF` será modificado quanto à lógica anti-duplicação já corrigida — rotação aplica-se *antes* da chamada.
-- Componentes existentes (`GRFConverter`, `BlackWhiteConverter`, `RasterConverter`, `ZPLLabelCreator`) recebem props/features novas sem remover as antigas.
-- Lovable Cloud só será ativado na Fase 6 (OCR/tradução) — fases 1–5 permanecem client-side.
-
-**Estrutura de novos arquivos (resumo):**
 ```text
 src/
-  contexts/ SettingsContext.tsx, I18nProvider.tsx
-  components/
-    SettingsPanel.tsx
-    ImageGallery.tsx, ImageEditor.tsx, ZoomControl.tsx
-    ZPLCanvasEditor.tsx, ElementInspector.tsx
-    BarcodeGenerator.tsx, ZPLViewer.tsx
-    LabelMockup3D.tsx, OCRTool.tsx
-    HistoryPanel.tsx
-  hooks/ useIndexedDB.ts, useKeyboardMove.ts, useZoom.ts
-  utils/ rotation.ts, units.ts, labelary.ts, webusbZebra.ts, db.ts
-  locales/ pt.json, en.json, es.json
+├── utils/
+│   ├── labelPresets.ts     (novo) tipos + load/save/export/import
+│   ├── labelSizes.ts       (novo) tamanhos padrão + customizados
+│   └── containerLayout.ts  (novo) cálculo de empacotamento
+├── components/
+│   ├── ZPLLabelCreator.tsx (editar) presets, tamanhos, copiar ZPL, fundo transp.
+│   ├── ZPLViewer.tsx       (editar) copiar ZPL, fundo transp.
+│   ├── ImageUploader.tsx   (editar) URL + upscale
+│   ├── GRFConverter.tsx    (editar) URL + alta resolução
+│   ├── BoxSimulator.tsx    (editar) modo container
+│   └── PresetManager.tsx   (novo) modal de presets/tamanhos
+└── i18n/locales/{pt,en,es}.json (novas chaves)
 ```
 
----
+Formato do arquivo portátil:
+```json
+{
+  "version": 1,
+  "exportedAt": "2026-06-09T...",
+  "presets": [...],
+  "sizes": [...]
+}
+```
 
-## Proposta de execução
-Começo pela **Fase 1** (fundação visual + i18n) assim que aprovado. Cada fase termina com preview funcional para você validar antes de avançar.
+## Ordem de execução
+1. Tamanhos + presets + exportar/importar (1 e 2)
+2. Copiar ZPL + fundo transparente (3 e 4)
+3. Imagens em alta (5)
+4. Container (6)
 
-**Pergunta antes de começar:** quer que eu siga a ordem proposta (1→6), ou prefere priorizar uma fase específica (ex.: Fase 3 — Editor ZPL drag-and-drop, que é o maior ganho funcional)?
+Posso implementar tudo de uma vez ou ir entregando por sub-fase. Confirma se sigo com tudo junto e se 100×201 é em **mm**.
