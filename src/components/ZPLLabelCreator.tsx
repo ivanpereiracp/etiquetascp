@@ -951,11 +951,14 @@ export const ZPLLabelCreator = () => {
 
       {/* ZPL Code Preview */}
       <div className="glass-panel rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
           <h3 className="font-semibold">Código ZPL</h3>
-          <button onClick={generateCode} className="tool-button">
-            Gerar Código
-          </button>
+          <div className="flex gap-2">
+            <button onClick={generateCode} className="tool-button">Gerar Código</button>
+            <button onClick={copyZPL} className="tool-button flex items-center gap-2">
+              <Copy size={16} /> Copiar ZPL
+            </button>
+          </div>
         </div>
         <pre className="bg-muted rounded-lg p-4 overflow-auto max-h-64 font-mono text-sm">
           {zplCode || generateZPL({ width: labelWidth, height: labelHeight, dpi, elements })}
