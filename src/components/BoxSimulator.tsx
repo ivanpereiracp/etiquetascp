@@ -605,6 +605,94 @@ const MiniBox: React.FC<{ size: number; background: string; shadeAmt: number; la
   );
 };
 
+const ContainerScene: React.FC<{ s: BoxState }> = ({ s }) => {
+  const { containerL, containerW, containerH, cargoL, cargoW, cargoH, cargoRows, cargoCols, cargoLayers, rotX, rotY, boxColor, drumColor, cargoKind, lighting } = s;
+
+  // Escala mm → px para caber bem na tela
+  const maxPx = 520;
+  const scale = Math.min(maxPx / containerL, 280 / containerW, 220 / containerH);
+  const cL = containerL * scale;
+  const cW = containerW * scale;
+  const cH = containerH * scale;
+  const uL = cargoL * scale;
+  const uW = cargoW * scale;
+  const uH = cargoH * scale;
+
+  const cardboard = `repeating-linear-gradient(45deg, ${boxColor} 0 4px, ${shade(boxColor, -10)} 4px 8px)`;
+  const isRound = cargoKind === 'drum' || cargoKind === 'bombona';
+  const isBag = cargoKind === 'bigbag';
+
+  const units: React.ReactNode[] = [];
+  for (let l = 0; l < cargoLayers; l++) {
+    for (let r = 0; r < cargoRows; r++) {
+      for (let c = 0; c < cargoCols; c++) {
+        const tx = c * uL - cL / 2 + uL / 2;
+        const ty = -l * uH - uH / 2;
+        const tz = r * uW - cW / 2 + uW / 2;
+        units.push(
+          <div key={`${l}-${r}-${c}`} style={{
+            position: 'absolute', left: '50%', top: '50%',
+            width: uL, height: uH, marginLeft: -uL / 2, marginTop: -uH / 2,
+            transformStyle: 'preserve-3d',
+            transform: `translate3d(${tx}px,${ty}px,${tz}px)`,
+          }}>
+            {isRound ? (
+              <div style={{
+                width: uL, height: uH,
+                background: `radial-gradient(ellipse at 30% 30%, ${shade(drumColor, 30)}, ${drumColor} 50%, ${shade(drumColor, -40)})`,
+                borderRadius: '50% / 8%',
+                border: `1px solid ${shade(drumColor, -40)}`,
+              }} />
+            ) : isBag ? (
+              <div style={{
+                width: uL, height: uH,
+                background: `linear-gradient(135deg, ${shade(boxColor, 20)}, ${boxColor}, ${shade(boxColor, -25)})`,
+                borderRadius: '12px 12px 4px 4px',
+                border: `1px solid ${shade(boxColor, -30)}`,
+              }} />
+            ) : (
+              <div style={{ width: uL, height: uH, background: cardboard, border: '1px solid rgba(0,0,0,0.3)', boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)' }} />
+            )}
+          </div>
+        );
+      }
+    }
+  }
+
+  // Faces do container (metálico, frente aberta)
+  const metal = 'linear-gradient(180deg, #b8c2c8 0%, #6a7378 60%, #4a5256 100%)';
+  const ribbed = 'repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 18px)';
+
+  return (
+    <div style={{ transformStyle: 'preserve-3d', transform: `rotateX(${rotX}deg) rotateY(${rotY}deg)`, width: cL, height: cH }}>
+      <div style={{ position: 'relative', width: cL, height: 1, transformStyle: 'preserve-3d' }}>
+        {/* piso */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cL, height: cW, marginLeft: -cL/2, marginTop: -cW/2,
+          background: '#3a3026', transform: `translateY(0px) rotateX(90deg)` }} />
+        {/* teto (semi-transparente) */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cL, height: cW, marginLeft: -cL/2, marginTop: -cW/2,
+          background: metal, opacity: 0.25, transform: `translateY(-${cH}px) rotateX(90deg)` }} />
+        {/* fundo (traseira) */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cL, height: cH, marginLeft: -cL/2, marginTop: -cH,
+          background: `${ribbed}, ${metal}`, transform: `translateZ(-${cW/2}px)` }} />
+        {/* lateral esquerda */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cW, height: cH, marginLeft: -cW/2, marginTop: -cH,
+          background: `${ribbed}, ${metal}`, opacity: 0.85,
+          transform: `translateX(-${cL/2}px) rotateY(90deg)` }} />
+        {/* lateral direita */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cW, height: cH, marginLeft: -cW/2, marginTop: -cH,
+          background: `${ribbed}, ${metal}`, opacity: 0.6,
+          transform: `translateX(${cL/2}px) rotateY(-90deg)` }} />
+        {/* cargas */}
+        {units}
+        {/* sombreamento global */}
+        <div style={{ position: 'absolute', left: '50%', top: '50%', width: cL, height: cH, marginLeft: -cL/2, marginTop: -cH,
+          background: `rgba(0,0,0,${lighting/200})`, pointerEvents: 'none', transform: `translateZ(${cW/2 - 0.5}px)` }} />
+      </div>
+    </div>
+  );
+};
+
 /* =====================  HELPERS  ===================== */
 
 const Face: React.FC<{ style: React.CSSProperties; shade?: number; children?: React.ReactNode }> = ({ style, shade = 0, children }) => (
