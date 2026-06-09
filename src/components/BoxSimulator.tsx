@@ -44,6 +44,18 @@ interface BoxState {
   palletRows: number;
   palletCols: number;
   palletLayers: number;
+  // Container
+  containerKind: ContainerKind;
+  containerL: number;  // mm
+  containerW: number;
+  containerH: number;
+  cargoKind: CargoKind;
+  cargoL: number;      // mm
+  cargoW: number;
+  cargoH: number;
+  cargoRows: number;
+  cargoCols: number;
+  cargoLayers: number;
 }
 
 const STORAGE_KEY = 'zit_box_sim_v2';
