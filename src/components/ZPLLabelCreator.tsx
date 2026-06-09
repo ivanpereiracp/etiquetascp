@@ -55,6 +55,7 @@ const renderBarcodeToCanvas = (
       margin: 0,
       width: el.moduleWidth ?? 2,
       fontSize: 14,
+      background: 'transparent',
     });
     return c;
   } catch {
@@ -71,6 +72,7 @@ const renderQRToCanvas = async (
       width: el.size * 20,
       margin: 0,
       errorCorrectionLevel: el.errorCorrection ?? 'M',
+      color: { dark: '#000000ff', light: '#00000000' },
     });
     return c;
   } catch {
