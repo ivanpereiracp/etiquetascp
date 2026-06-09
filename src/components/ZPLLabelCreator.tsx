@@ -434,12 +434,12 @@ export const ZPLLabelCreator = () => {
     const ratio = maxW / img.naturalWidth;
     const w = Math.max(20, maxW);
     const h = Math.max(20, Math.round(img.naturalHeight * ratio));
-    // Build GRF inline so the exported ZPL contains a printable raster
+    // Build GRF inline so the exported ZPL contains a printable raster.
+    // NOTE: Não preenchemos com branco — elementos têm fundo transparente para combinar com qualquer cor de etiqueta.
     const tmp = document.createElement('canvas');
     tmp.width = w; tmp.height = h;
     const tctx = tmp.getContext('2d')!;
-    tctx.fillStyle = '#fff';
-    tctx.fillRect(0, 0, w, h);
+    tctx.clearRect(0, 0, w, h);
     tctx.drawImage(img, 0, 0, w, h);
     const idata = tctx.getImageData(0, 0, w, h);
     const bw = convertToBlackAndWhite(idata, 128);
