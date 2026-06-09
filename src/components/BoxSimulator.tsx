@@ -411,6 +411,7 @@ export const BoxSimulator = () => {
           {surface === 'drum' && <DrumScene s={state} kind="drum" />}
           {surface === 'bombona' && <DrumScene s={state} kind="bombona" />}
           {surface === 'pallet' && <PalletScene s={state} />}
+          {surface === 'container' && <ContainerScene s={state} />}
         </div>
       </div>
     </div>
