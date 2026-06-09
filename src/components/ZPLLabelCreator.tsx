@@ -13,6 +13,7 @@ import {
   FileImage,
   Image as ImageIcon,
   Printer,
+  Copy,
 } from 'lucide-react';
 import { sendZPLToAgent } from '@/utils/zebraPrint';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -32,6 +33,8 @@ import {
 import { downloadFile, convertToBlackAndWhite, convertToGRF } from '@/utils/imageProcessing';
 import { Slider } from '@/components/ui/slider';
 import { DOTS_PER_MM } from '@/utils/units';
+import { PresetManager } from '@/components/PresetManager';
+import { loadSizes, mmToDots, type LabelSize, type LabelPreset } from '@/utils/labelPresets';
 
 type Drag = { index: number; offsetX: number; offsetY: number } | null;
 type ResizeDrag = { index: number; startW: number; startH: number; startX: number; startY: number } | null;
