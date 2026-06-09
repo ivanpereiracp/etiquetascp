@@ -90,6 +90,11 @@ const DEFAULT: BoxState = {
   palletRows: 2,
   palletCols: 2,
   palletLayers: 3,
+  containerKind: '40ft',
+  containerL: 12032, containerW: 2352, containerH: 2393,
+  cargoKind: 'pallet',
+  cargoL: 1200, cargoW: 1000, cargoH: 1500,
+  cargoRows: 2, cargoCols: 10, cargoLayers: 1,
 };
 
 const SURFACE_OPTIONS: { value: Surface; label: string }[] = [
