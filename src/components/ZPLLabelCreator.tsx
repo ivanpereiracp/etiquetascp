@@ -455,6 +455,34 @@ export const ZPLLabelCreator = () => {
     });
   };
 
+  const handleLoadPreset = (p: LabelPreset) => {
+    setLabelWidth(p.widthDots);
+    setLabelHeight(p.heightDots);
+    setDpi(p.dpi);
+    setBgColor(p.bgColor);
+    setElements(p.elements);
+    setSelectedElement(null);
+  };
+
+  const handlePickSize = (s: LabelSize) => {
+    setLabelWidth(mmToDots(s.widthMm, dpi));
+    setLabelHeight(mmToDots(s.heightMm, dpi));
+    toast.success(`Tamanho aplicado: ${s.name}`);
+  };
+
+  const copyZPL = async () => {
+    const code = generateZPL({ width: labelWidth, height: labelHeight, dpi, elements });
+    setZplCode(code);
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success('Código ZPL copiado!');
+    } catch {
+      toast.error('Não foi possível copiar.');
+    }
+  };
+
+  const sizes = loadSizes();
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="glass-panel rounded-xl p-6">
