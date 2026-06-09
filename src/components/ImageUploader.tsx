@@ -19,8 +19,43 @@ export const ImageUploader = ({ onImageLoad, label = "Arraste uma imagem ou cliq
     if (!ctx) return;
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     setPreview(canvas.toDataURL('image/png'));
+    setLastCanvas(canvas);
     onImageLoad(imageData, canvas);
   }, [onImageLoad]);
+
+  const loadFromUrl = useCallback(async () => {
+    if (!url.trim()) return;
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error('Não foi possível carregar a imagem da URL.'));
+        img.src = url.trim();
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d')!.drawImage(img, 0, 0);
+      emitFromCanvas(canvas);
+      toast.success(`Imagem carregada (${img.naturalWidth}×${img.naturalHeight}px).`);
+    } catch (e: any) {
+      toast.error(e?.message || 'Erro ao carregar URL.');
+    }
+  }, [url, emitFromCanvas]);
+
+  const upscale2x = useCallback(() => {
+    if (!lastCanvas) return;
+    const c = document.createElement('canvas');
+    c.width = lastCanvas.width * 2;
+    c.height = lastCanvas.height * 2;
+    const ctx = c.getContext('2d')!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(lastCanvas, 0, 0, c.width, c.height);
+    emitFromCanvas(c);
+    toast.success(`Upscaled para ${c.width}×${c.height}px.`);
+  }, [lastCanvas, emitFromCanvas]);
 
   const processTiff = useCallback((file: File) => {
     const reader = new FileReader();
